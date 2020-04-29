@@ -134,3 +134,6 @@ docs/*.synctex.gz
 docs/*.log
 docs/*.bbl
 docs/*.blg
+
+#Virtual enviroment
+tbcalc_env
