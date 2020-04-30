@@ -55,4 +55,41 @@ def test_init():
     for ci in correct_input:
         ana = Analyser(**ci[0])
         
-        assert ana.type == ci[1]
+        #assert ana.type == ci[1]
+    
+    wrong_input = []
+
+
+    #Missing bending radii
+    wrong_input.append({
+                         'crystal' : 'Si',
+                         'hkl' : [4,0,0],
+                         'thickness' : Quantity(150,'um'),
+                         'diameter' : Quantity(100,'mm'),
+                         })
+
+    #Missing bending radii
+    wrong_input.append({
+                         'crystal' : 'Si',
+                         'hkl' : [4,0,0],
+                         'thickness' : Quantity(150,'um'),
+                         'Ry' : Quantity(0.5,'m'),                         
+                         'diameter' : Quantity(100,'mm'),
+                         })       
+
+    #Missing bending radii
+    wrong_input.append({
+                         'crystal' : 'Si',
+                         'hkl' : [4,0,0],
+                         'thickness' : Quantity(150,'um'),
+                         'Rx' : Quantity(0.5,'m'),                         
+                         'diameter' : Quantity(100,'mm'),
+                         })      
+
+    for wi in wrong_input:
+        try:
+            ana = Analyser(**wi)
+            assert False
+        except:
+            pass
+    

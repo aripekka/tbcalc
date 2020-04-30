@@ -79,7 +79,7 @@ class Analyser:
         displacement of atoms parallel to h. Currently assumes that all atoms
         share the same <u^2>. Defaults to 1 (= 0 K).
 
-    S : 6x6 array wrapped in a Quantity instance of type pressure^-1
+    S : 6x6 array wrapped in a pyTTE.Quantity instance of type pressure^-1
         The compliance matrix in the Voigt notation. Overrides the default 
         compliance matrix given by elastic_tensors and any user inputs for E 
         and nu. (all analysers, optional)
@@ -116,4 +116,110 @@ class Analyser:
 
 
     def __init__(self,filepath=None, **kwargs):
-        pass
+            
+        params = {}
+
+        if filepath is not None:
+            
+            #####################################
+            #Read crystal parameters from a file#
+            #####################################
+
+            #Overwrite possible kwargs 
+            kwargs = {}
+
+            with open(filepath,'r') as f:
+                lines = f.readlines()
+
+            #Boolean to check if elements of the compliance matrix are given
+            is_S_given = False
+            S_matrix = np.zeros((6,6))            
+
+            #check and parse parameters
+            for line in lines:
+                line = line.strip()
+                if len(line) > 0 and not line[0] == '#':  #skip empty and comment lines
+                    ls = line.split() 
+                    if ls[0] == 'crystal' and len(ls) == 2:
+                        kwargs['crystal'] = ls[1]
+                    elif ls[0] == 'hkl' and len(ls) == 4:
+                        kwargs['hkl'] = [int(ls[1]),int(ls[2]),int(ls[3])]
+                    elif ls[0] in ['Rx', 'Ry']:
+                        if len(ls) == 3:
+                            kwargs[ls[0]] = Quantity(float(ls[1]),ls[2])
+                        elif len(ls) == 2:
+                            kwargs[ls[0]] = ls[1]
+                        else:
+                            print('Skipped an invalid line in the file: ' + line)                           
+                    elif ls[0] == 'R' and len(ls) == 3:                        
+                        kwargs['Rx'] = Quantity(float(ls[1]),ls[2])
+                        kwargs['Ry'] = Quantity(float(ls[1]),ls[2])         
+                    elif ls[0] == 'in_plane_rotation':
+                        if len(ls) == 4:
+                            kwargs['in_plane_rotation'] = [float(ls[1]),float(ls[2]),float(ls[3])]
+                        elif  len(ls) == 3:
+                            kwargs['in_plane_rotation'] = Quantity(float(ls[1]),ls[2])
+                        else:
+                            print('Skipped an invalid line in the file: ' + line)
+                    elif ls[0] == 'debye_waller' and len(ls) == 2:
+                        kwargs['debye_waller'] = float(ls[1])
+                    elif ls[0] in ['thickness','diameter','a','b','strip_width', 'asymmetry', 'E'] and len(ls) == 3:
+                        kwargs[ls[0]] = Quantity(float(ls[1]),ls[2])
+                    elif ls[0] == 'nu' and len(ls) == 2:
+                        kwargs['nu'] = float(ls[1])
+                    elif ls[0][0] == 'S' and len(ls[0]) == 3 and len(ls) == 2:
+                        is_S_given = True
+                        i = int(ls[0][1])-1
+                        j = int(ls[0][2])-1
+                        if i > j:
+                            print('Omitted the lower triangle element ' + ls[0] + '.')
+                        else:
+                            S_matrix[i,j] = float(ls[1])
+                            S_matrix[j,i] = float(ls[1])           
+                    else:
+                        print('Skipped an invalid line in the file: ' + line)
+
+            if is_S_given:
+                #Finalize the S matrix
+                kwargs['S'] = Quantity(S_matrix,'GPa^-1') 
+
+        ###################################################
+        #Check the presence of the required crystal inputs#
+        ###################################################
+        
+        try:
+            for k in ['crystal','hkl','thickness']:
+                params[k] = kwargs[k]
+        except:
+            raise KeyError('At least one of the required keywords crystal,'\
+                          +'hkl, thickness, Rx, Ry, or R is missing!')
+
+        if 'Rx' in kwargs.keys() and 'Ry' in kwargs.keys():
+            params['Rx'] = kwargs['Rx']
+            params['Ry'] = kwargs['Ry']        
+        elif 'R' in kwargs.keys():  
+            if 'Rx' in kwargs.keys() or 'Rx' in kwargs.keys():
+                print('Warning! Rx and/or Ry given but overridden by R.')
+            params['Rx'] = kwargs['R']
+            params['Ry'] = kwargs['R']
+        else:
+            raise KeyError('The bending radii Rx or Ry, or R are missing!')
+
+
+        #Optional keywords       
+        for k in ['asymmetry','in_plane_rotation']:
+            params[k] = kwargs.get(k, Quantity(0,'deg'))
+
+        params['debye_waller'] = kwargs.get('debye_waller', 1.0)
+
+        for k in ['S','E','nu']:
+            params[k] = kwargs.get(k, None)
+
+        #Check that if either E or nu is given, then the other one is also
+        if (params['E'] is not None) ^ (params['nu'] is not None):
+            raise KeyError('Both E and nu required for isotropic material!')
+
+
+
+
+            
