@@ -30,6 +30,25 @@ def test_init():
                          'diameter' : Quantity(100,'mm'),
                          }, 'circular'])
 
+    #Spherical bending
+    correct_input.append([{
+                         'crystal' : 'Si',
+                         'hkl' : [4,0,0],
+                         'thickness' : Quantity(150,'um'),
+                         'R' : Quantity(1,'m'),
+                         'diameter' : Quantity(100,'mm'),
+                         }, 'circular'])
+
+    correct_input.append([{
+                         'crystal' : 'Si',
+                         'hkl' : [4,0,0],
+                         'thickness' : Quantity(150,'um'),
+                         'R' : Quantity(1,'m'),
+                         'Ry' : Quantity(0.5,'m'),
+                         'diameter' : Quantity(100,'mm'),
+                         }, 'circular'])
+
+
     #rectangular analyser
     correct_input.append([{
                          'crystal' : 'Si',
