@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from pyTTE import TakagiTaupin, Quantity
+from pyTTE import TakagiTaupin, Quantity, TTcrystal
 import numpy as np
 
 class Analyser:
@@ -143,8 +143,8 @@ class Analyser:
 
 
     def __init__(self,filepath=None, **kwargs):
-            
-        params = {}
+
+        kwargs_ttcrystal = {}
 
         if filepath is not None:
             
@@ -210,44 +210,46 @@ class Analyser:
                 #Finalize the S matrix
                 kwargs['S'] = Quantity(S_matrix,'GPa^-1') 
 
-        ###################################################
-        #Check the presence of the required crystal inputs#
-        ###################################################
+        ############################################################
+        #Check the crystal inputs and initialize TTcrystal instance#
+        ############################################################
         
         try:
             for k in ['crystal','hkl','thickness']:
-                params[k] = kwargs[k]
+                kwargs_ttcrystal[k] = kwargs[k]
         except:
             raise KeyError('At least one of the required keywords crystal,'\
                           +'hkl, thickness, Rx, Ry, or R is missing!')
 
         if 'Rx' in kwargs and 'Ry' in kwargs:
-            params['Rx'] = kwargs['Rx']
-            params['Ry'] = kwargs['Ry']        
+            kwargs_ttcrystal['Rx'] = kwargs['Rx']
+            kwargs_ttcrystal['Ry'] = kwargs['Ry']        
         elif 'R' in kwargs:  
             if 'Rx' in kwargs or 'Rx' in kwargs:
                 print('Warning! Rx and/or Ry given but overridden by R.')
-            params['Rx'] = kwargs['R']
-            params['Ry'] = kwargs['R']
+            kwargs_ttcrystal['Rx'] = kwargs['R']
+            kwargs_ttcrystal['Ry'] = kwargs['R']
         else:
             raise KeyError('The bending radii Rx or Ry, or R are missing!')
 
-
         #Optional keywords       
         for k in ['asymmetry','in_plane_rotation']:
-            params[k] = kwargs.get(k, Quantity(0,'deg'))
+            kwargs_ttcrystal[k] = kwargs.get(k, Quantity(0,'deg'))
 
-        params['debye_waller'] = kwargs.get('debye_waller', 1.0)
+        kwargs_ttcrystal['debye_waller'] = kwargs.get('debye_waller', 1.0)
 
         for k in ['S','E','nu']:
-            params[k] = kwargs.get(k, None)
+            kwargs_ttcrystal[k] = kwargs.get(k, None)
 
-        #Check that if either E or nu is given, then the other one is also
-        if (params['E'] is not None) ^ (params['nu'] is not None):
-            raise KeyError('Both E and nu required for isotropic material!')
+        kwargs_ttcrystal['fix_to_axes'] = 'shape'
+
+        self.crystal_object = TTcrystal(**kwargs_ttcrystal)
 
 
-        #Check and set the wafer geometry
+        ##################################
+        #Check and set the wafer geometry#
+        ##################################
+
         self.geometry_info = {}
    
         if 'diameter' in kwargs:
@@ -298,4 +300,3 @@ class Analyser:
                 self.geometry_info['wafer_shape'] = 'rectangular'
             else:
                 raise KeyError('Both keywords a and b are required!')                
-            
