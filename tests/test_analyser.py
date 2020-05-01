@@ -73,9 +73,24 @@ def test_init():
 
     for ci in correct_input:
         ana = Analyser(**ci[0])
-        
-        #assert ana.type == ci[1]
-    
+
+        assert ana.geometry_info['wafer_shape'] == ci[1]
+
+        #test the initialization of the geometry_info dict
+        if ci[1] == 'circular':
+            assert set(ana.geometry_info) == {'wafer_shape','diameter'}
+            assert ana.geometry_info['diameter'].value == ci[0]['diameter'].value                      
+        elif ci[1] == 'rectangular':
+            assert set(ana.geometry_info) == {'wafer_shape','a','b'}        
+            assert ana.geometry_info['a'].value == ci[0]['a'].value            
+            assert ana.geometry_info['b'].value == ci[0]['b'].value            
+
+        elif ci[1] == 'strip-bent':
+            assert set(ana.geometry_info) == {'wafer_shape','diameter','strip_width','strip_orientation'}        
+            assert ana.geometry_info['diameter'].value == ci[0]['diameter'].value                
+            assert ana.geometry_info['strip_width'].value == ci[0]['strip_width'].value    
+            assert ana.geometry_info['strip_orientation'] == ci[0].get('strip_orientation','meridional') 
+
     wrong_input = []
 
 

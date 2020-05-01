@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from pyTTE import TakagiTaupin, Quantity
-
+import numpy as np
 
 class Analyser:
     '''
@@ -110,7 +110,34 @@ class Analyser:
     nu : float (all analysers, optional)
         Poisson's ratio for isotropic material. Overrides the default compliance 
         matrix. Neglected if S is given. Requires that E also given.
-    
+
+
+    Attributes
+    ----------
+
+    crystal_object: TTcrystal
+        A TTcrystal object constructed from the input parameters
+        
+    geometry_info: dict
+        Contains the information of the wafer geometry and analyser type. Has 
+        the following keywords:
+
+            'wafer_shape' (all analysers) : str
+                Either 'circular', 'rectangular', 'strip-bent' or 'custom' 
+                (the last one is reserved for future used)
+
+            'diameter' : pyTTE.Quantity of type length (circular and strip-bent)
+                The diameter of the analyser.
+                
+            'a', 'b' : pyTTE.Quantity of type length (rectangular)
+                Meridional and sagittal dimensions of the rectangular wafer.
+
+            'strip_width' : pyTTE.Quantity of type length (strip-bent)
+                Width of the strips of the strip-bent analyser
+                
+            'strip_orientation' : str (strip-bent)
+                Orientation of the long dimension of the strips with respect to
+                to diffraction plane. Either 'meridional' or 'sagittal'
     
     '''    
 
@@ -194,11 +221,11 @@ class Analyser:
             raise KeyError('At least one of the required keywords crystal,'\
                           +'hkl, thickness, Rx, Ry, or R is missing!')
 
-        if 'Rx' in kwargs.keys() and 'Ry' in kwargs.keys():
+        if 'Rx' in kwargs and 'Ry' in kwargs:
             params['Rx'] = kwargs['Rx']
             params['Ry'] = kwargs['Ry']        
-        elif 'R' in kwargs.keys():  
-            if 'Rx' in kwargs.keys() or 'Rx' in kwargs.keys():
+        elif 'R' in kwargs:  
+            if 'Rx' in kwargs or 'Rx' in kwargs:
                 print('Warning! Rx and/or Ry given but overridden by R.')
             params['Rx'] = kwargs['R']
             params['Ry'] = kwargs['R']
@@ -220,6 +247,55 @@ class Analyser:
             raise KeyError('Both E and nu required for isotropic material!')
 
 
+        #Check and set the wafer geometry
+        self.geometry_info = {}
+   
+        if 'diameter' in kwargs:
+            #Handle circular and strip-bent geometries     
+            
+            #Check the validity of given diameter
+            diameter = kwargs['diameter']
+            if isinstance(diameter,Quantity) and diameter.type() == 'length' and diameter.value.size == 1:            
+                self.geometry_info['diameter'] = diameter
+            else:
+                raise TypeError('diameter has to be a single value in pyTTE.Quantity of type length!')
+                
+            #check the presence of additional keywords
+            if 'a' in kwargs or 'b' in kwargs:
+                raise KeyError('Keywords a or b can not be given with the keyword diameter!')
+            elif 'strip_width' in kwargs:
+                
+                strip_width = kwargs['strip_width']
+                if isinstance(strip_width,Quantity) and strip_width.type() == 'length' and strip_width.value.size == 1:            
+                    self.geometry_info['strip_width'] = strip_width
+                else:
+                    raise TypeError('strip_width has to be a single value in pyTTE.Quantity of type length!')
+               
+                self.geometry_info['strip_orientation'] = kwargs.get('strip_orientation', 'meridional').lower()
 
+                if self.geometry_info['strip_orientation'] not in ['meridional','sagittal']:
+                    raise TypeError("strip_orientation has to be either 'meridional' or 'sagittal'!" )
 
+                self.geometry_info['wafer_shape'] = 'strip-bent'
+
+            else:
+                self.geometry_info['wafer_shape'] = 'circular'
+        else:
+            #Handle rectangular geometry
+            if 'a' in kwargs and 'b' in kwargs:
+                if 'strip_width' in kwargs or 'strip_orientation' in kwargs:
+                    raise KeyError('Keywords strip_width and/or strip_orientation can not be given together with a and b!')
+
+                if isinstance(kwargs['a'],Quantity) and kwargs['a'].type() == 'length' and kwargs['a'].value.size == 1:            
+                    self.geometry_info['a'] = kwargs['a']
+                    if isinstance(kwargs['b'],Quantity) and kwargs['b'].type() == 'length' and kwargs['b'].value.size == 1:            
+                        self.geometry_info['b'] = kwargs['b']
+                    else:
+                        raise TypeError('b has to be a single value in pyTTE.Quantity of type length!')                                       
+                else:
+                    raise TypeError('a has to be a single value in pyTTE.Quantity of type length!')
+                
+                self.geometry_info['wafer_shape'] = 'rectangular'
+            else:
+                raise KeyError('Both keywords a and b are required!')                
             
