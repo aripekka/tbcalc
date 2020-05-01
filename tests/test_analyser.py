@@ -120,10 +120,51 @@ def test_init():
                          'diameter' : Quantity(100,'mm'),
                          })      
 
+    #Missing crystal paramter
+    wrong_input.append({
+                         'hkl' : [4,0,0],
+                         'thickness' : Quantity(150,'um'),
+                         'R' : Quantity(0.5,'m'),                         
+                         'diameter' : Quantity(100,'mm'),
+                         })      
+
     for wi in wrong_input:
         try:
             ana = Analyser(**wi)
             assert False
         except:
             pass
+
+def test_init_TTcrystal():
+    '''
+    Check that the TTcrystal object in Analyser is initialized correctly
+    '''
+
+    inp = []
+    inp.append({
+                'crystal' : 'Ge',
+                'hkl' : [5,3,1],
+                'thickness' : Quantity(150,'um'),
+                'Rx' : Quantity(1,'m'),
+                'Ry' : Quantity(0.5,'m'),
+                'diameter'  : Quantity(100,'mm'),
+                'asymmetry' : Quantity(5,'deg'),
+                'in_plane_rotation' : Quantity(45,'deg'),
+                'debye_waller'  : 0.8,
+                })
+
+
+    for i in inp:
+        ana = Analyser(**i)
     
+        assert ana.crystal_object.crystal_data['name'] == i['crystal']
+        assert ana.crystal_object.hkl == i['hkl']
+        assert ana.crystal_object.debye_waller == i['debye_waller']
+
+        assert ana.crystal_object.thickness.value == i['thickness'].value
+        assert ana.crystal_object.asymmetry.value == i['asymmetry'].value
+        assert ana.crystal_object.in_plane_rotation.value == i['in_plane_rotation'].value
+        assert ana.crystal_object.Rx.value == i['Rx'].value
+        assert ana.crystal_object.Ry.value == i['Ry'].value
+        
+        assert ana.crystal_object.fix_to_axes == 'shape'
