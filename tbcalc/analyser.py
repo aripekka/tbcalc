@@ -300,3 +300,22 @@ class Analyser:
                 self.geometry_info['wafer_shape'] = 'rectangular'
             else:
                 raise KeyError('Both keywords a and b are required!')                
+
+    def __str__(self):
+
+        #Build analyser info string
+        ana_str = 'Wafer shape       : ' + self.geometry_info['wafer_shape']
+
+        for k in self.geometry_info:
+            if not k == 'wafer_shape':
+                ana_str = ana_str + '\n' + k[:1].upper() + k[1:].ljust(16)\
+                        + ' : ' + str(self.geometry_info[k])        
+        
+        ana_str.replace('_', ' ')
+                
+        return   'CRYSTAL PARAMETERS\n'\
+               + '------------------\n\n'\
+               + str(self.crystal_object) + '\n\n'\
+               + 'ANALYSER PARAMETERS\n'\
+               + '-------------------\n\n'\
+               + ana_str
