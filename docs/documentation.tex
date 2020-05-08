@@ -27,6 +27,31 @@ As formally shown \cite{Honkanen_2016}, the effect of a constant component in a 
 \subsection{Depth-dependent Takagi-Taupin curve}
 The 1D TT-curve is calculated using \textsc{PyTTE}. In v. 1.0 of \textsc{tbcalc} it is assumed that the main axes of curvature of TBCA:s are along the meridional and sagittal directions with respect to the diffraction plane and coincide, respectively, with the $x$- and $y$-axes of the Cartesian system used in the code and the manuscript \cite{honkanen2020}. By default, the internal anisotropic compliance matrices\footnote{Values from CRC Handbook of Chemistry and Physics, 82nd edition (2001)} are used for elastic parameters and \textsc{xraylib}\footnote{\url{https://github.com/tschoonj/xraylib}} for crystallograpic parameters and structure factors.
 
+\subsection{Transverse stress and strain tensor fields}
+For convenience, this section lists the equations for the transverse stress tensor and the strain it causes. Refer to \cite{honkanen2020} for derivation and discussion.
+\subsubsection{Isotropic circular}
+The components of the transverse stress tensor of an isotropic circular wafer with the diameter $L$ and meridional and sagittal bending radii $R_1$ and $R_2$, respectively, are
+\begin{equation}
+\sigma_{xx} =  \frac{E}{16 R_1 R_2}\left( \frac{L^2}{4} - x^2 - 3 y^2 \right) \qquad
+\sigma_{xy} = \frac{E}{8 R_1 R_2}x y \qquad
+\sigma_{yy} =  \frac{E}{16 R_1 R_2}\left(\frac{L^2}{4} - 3 x^2 - y^2\right)
+\end{equation}
+the corresponding strain tensor components
+\begin{gather}
+u_{xx} = \frac{1}{16 R^2}\left[(1-\nu)\frac{L^2}{4} - (1-3\nu)x^2 - (3-\nu)y^2 \right] \\
+u_{yy} = \frac{1}{16 R^2}\left[(1-\nu)\frac{L^2}{4} - (1-3\nu)y^2 - (3-\nu)x^2 \right] \\
+u_{xy} = \frac{1+\nu}{8 R^2}x y \qquad u_{xz} = u_{yz} = 0 \qquad
+u_{zz} = \frac{\nu}{4R^2}\left(x^2 + y^2 -\frac{L^2}{8} \right)
+\end{gather}
+and the contact force per unit area
+\begin{equation}
+P = \frac{E d}{16 R_1^2 R_2^2} \left[ 
+\left(3 R_1 + R_2 \right) x^2
++ \left(R_1 + 3 R_2 \right) y^2
+- \left(R_1 + R_2 \right)\frac{L^2}{4}
+\right].
+\end{equation}
+
 \bibliographystyle{unsrt}
 \bibliography{documentation}
 \end{document}
