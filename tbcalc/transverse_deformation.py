@@ -69,10 +69,25 @@ def isotropic_circular(Rx,Ry,L,nu,E):
     #Define stress functions
     stress = {}
     
-    stress['xx'] = lambda x,y : E/(16*Rx*Ry)*(L**2/4 - x**2 - 3*y**2)
-    stress['yy'] = lambda x,y : E/(16*Rx*Ry)*(L**2/4 - y**2 - 3*x**2)
-    stress['xy'] = lambda x,y : E/(8*Rx*Ry)*x*y
-    stress['yx'] = stress['xy']
+    def sigma_xx(x,y):
+        stress = E/(16*Rx*Ry)*(L**2/4 - x**2 - 3*y**2)
+        stress[x**2 + y**2 > L**2/4] = np.nan
+        return stress
+
+    def sigma_yy(x,y):
+        stress = E/(16*Rx*Ry)*(L**2/4 - y**2 - 3*x**2)
+        stress[x**2 + y**2 > L**2/4] = np.nan
+        return stress
+
+    def sigma_xy(x,y):
+        stress = E/(8*Rx*Ry)*x*y
+        stress[x**2 + y**2 > L**2/4] = np.nan
+        return stress
+        
+    stress['xx'] = sigma_xx
+    stress['yy'] = sigma_yy
+    stress['xy'] = sigma_xy
+    stress['yx'] = sigma_xy
 
     #Add alternative indexing
     stress[11] = stress['xx']
@@ -82,18 +97,51 @@ def isotropic_circular(Rx,Ry,L,nu,E):
 
     #Define strain functions
     strain = {}    
-    strain['xx'] = lambda x,y : 1/(16*Rx*Ry)*((1 - nu)*L**2/4 -(1 - 3*nu)*x**2 -(3 - nu)*y**2)
-    strain['yy'] = lambda x,y : 1/(16*Rx*Ry)*((1 - nu)*L**2/4 -(1 - 3*nu)*y**2 -(3 - nu)*x**2)
-    strain['xy'] = lambda x,y : (1 + nu)/(8*Rx*Ry)*x*y
-    strain['yx'] = strain['xy']
 
-    strain['xz'] = lambda x,y : np.zeros(np.array(x).shape)
-    strain['yz'] = lambda x,y : np.zeros(np.array(x).shape)
-    strain['zx'] = strain['xz']
-    strain['zy'] = strain['yz']
+    def epsilon_xx(x,y):
+        strain = 1/(16*Rx*Ry)*((1 - nu)*L**2/4 -(1 - 3*nu)*x**2 -(3 - nu)*y**2)
+        strain[x**2 + y**2 > L**2/4] = np.nan
+        return strain
 
-    strain['zz'] = lambda x,y : nu/(4*Rx*Ry)*(x**2 + y**2 - L**2/8)
+    def epsilon_yy(x,y):
+        strain = 1/(16*Rx*Ry)*((1 - nu)*L**2/4 -(1 - 3*nu)*y**2 -(3 - nu)*x**2)
+        strain[x**2 + y**2 > L**2/4] = np.nan
+        return strain
+
+    def epsilon_xy(x,y):
+        strain = (1 + nu)/(8*Rx*Ry)*x*y
+        strain[x**2 + y**2 > L**2/4] = np.nan
+        return strain
+
+    def epsilon_xz(x,y):
+        strain = np.zeros(np.array(x).shape)
+        strain[x**2 + y**2 > L**2/4] = np.nan
+        return strain
+
+    def epsilon_yz(x,y):
+        strain = np.zeros(np.array(x).shape)
+        strain[x**2 + y**2 > L**2/4] = np.nan
+        return strain
+
+    def epsilon_zz(x,y):
+        strain = nu/(4*Rx*Ry)*(x**2 + y**2 - L**2/8)
+        strain[x**2 + y**2 > L**2/4] = np.nan
+        return strain
+
+
+    strain['xx'] = epsilon_xx
+    strain['yy'] = epsilon_yy
+    strain['xy'] = epsilon_xy 
+    strain['yx'] = epsilon_xy
+
+    strain['xz'] = epsilon_xz
+    strain['zx'] = epsilon_xz
+    strain['yz'] = epsilon_yz
+    strain['zy'] = epsilon_yz
+
+    strain['zz'] = epsilon_zz
     
+    #Add alternative indexing        
     strain[11] = strain['xx']
     strain[22] = strain['yy']
     strain[12] = strain['xy']    
