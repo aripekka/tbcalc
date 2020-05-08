@@ -23,6 +23,8 @@ def test_isotropic_circular():
     E = 165
     nu = 0.22
 
+    thickness = 0.1
+
     Rx = 1000.0
     Ry = 500.0
 
@@ -71,7 +73,7 @@ def test_isotropic_circular():
             strain[i*10+j] = strain[int2char_ind[i]+int2char_ind[j]]
 
     #COMPARE THE REFERENCE TO THE IMPLEMENTATION
-    stress_imp, strain_imp = isotropic_circular(Rx, Ry, L, nu, E)
+    stress_imp, strain_imp, _ = isotropic_circular(Rx, Ry, L, thickness, nu, E)
     
     meps = np.finfo(np.float).eps #machine epsilon
 

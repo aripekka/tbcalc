@@ -14,7 +14,7 @@ Created on Fri May  8 14:51:31 2020
 from __future__ import division, print_function
 import numpy as np
 
-def isotropic_circular(Rx,Ry,L,nu,E):
+def isotropic_circular(Rx,Ry,L,thickness,nu,E):
     '''
     Returns the functions to calculate the stress and strain tensor field 
     components as a function of position on the crystal wafer for an isotropic
@@ -23,16 +23,21 @@ def isotropic_circular(Rx,Ry,L,nu,E):
     Parameters
     ----------
     Rx : float
-        Meridional bending radius. The units have to be same as for Ry and L.
+        Meridional bending radius
     Ry : float
-        Sagittal bending radius. The units have to be same as for Rx and L.
+        Sagittal bending radiu
     L : float
-        Diameter of the wafer. The units have to be same as for Rx and Ry.
+        Diameter of the wafer
+    thickness : float
+        Thickness of the wafer
     nu : float
-        Poisson's ratio.
+        Poisson's ratio
     E : float
         Young's modulus. Units determine the units of the returned stress 
         tensor components.
+
+    For sensible output, the physical units of Rx, Ry, L, and thickness have to
+    be the same.
 
     Returns
     -------
@@ -63,6 +68,10 @@ def isotropic_circular(Rx,Ry,L,nu,E):
         Functions return nan for coordinates outside the wafer.
 
         Units of the position are same as for inputs Rx, Ry, and L.
+
+    contact_force : function
+        Contact force between the wafer and the substrate per unit area as a
+        function of position i.e. contact_force(X, Y).
 
     '''
 
@@ -154,4 +163,8 @@ def isotropic_circular(Rx,Ry,L,nu,E):
     
     strain[33] = strain['zz']
     
-    return stress, strain
+    #Calculate the contact force
+    def contact_force(x, y):
+        return E*thickness/(16*Rx**2*Ry**2)*((3*Rx + Ry)*x**2 + (Rx + 3*Ry)*y**2 - (Rx + Ry)*L**2/4)
+    
+    return stress, strain, contact_force
