@@ -92,7 +92,7 @@ def isotropic_circular(Rx,Ry,L,nu,E):
     strain['zx'] = strain['xz']
     strain['zy'] = strain['yz']
 
-    strain['zz'] = nu/(4*Rx*Ry)*(x**2 + y**2 - L**2/8)
+    strain['zz'] = lambda x,y : nu/(4*Rx*Ry)*(x**2 + y**2 - L**2/8)
     
     strain[11] = strain['xx']
     strain[22] = strain['yy']
