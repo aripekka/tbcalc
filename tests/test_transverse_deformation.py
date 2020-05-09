@@ -307,8 +307,6 @@ def test_isotropic_rectangular():
 
             num_ind = i*10+j
             str_ind = int2char_ind[i]+int2char_ind[j]
-
-            print(str_ind)
             
             assert np.all(np.logical_or(np.abs(stress[num_ind] - stress_imp[num_ind](X,Y)) < meps,
                                         np.logical_and(np.isnan(stress[num_ind]), np.isnan(stress_imp[num_ind](X,Y)))))
@@ -331,4 +329,73 @@ def test_isotropic_rectangular():
     assert np.all(np.logical_or(np.abs(P - P_imp(X,Y)) < meps,
                                 np.logical_and(np.isnan(P), np.isnan(P_imp(X,Y)))))
 
+def test_anisotropic_rectangular_vs_isotropic_rectangular():
+
+    E = 165
+    nu = 0.22
+
+    thickness = 0.1
+
+    Rx = 1000.0
+    Ry = 500.0
+
+    a = 100.0
+    b = 100.0
     
+    S = np.zeros((6,6))
+
+    #The elastic matrix for isotropic crystal
+    S[0,0] = 1
+    S[1,1] = 1
+    S[2,2] = 1
+
+    S[0,1] = -nu
+    S[0,2] = -nu
+    S[1,2] = -nu
+    S[1,0] = -nu
+    S[2,0] = -nu
+    S[2,1] = -nu
+
+    S[3,3] = 2*(1+nu)
+    S[4,4] = 2*(1+nu)
+    S[5,5] = 2*(1+nu)
+
+    S = S/E
+
+    stress_iso, strain_iso, P_iso = isotropic_rectangular(Rx, Ry, a, b, thickness, nu, E)    
+    stress_aniso, strain_aniso, P_aniso = anisotropic_rectangular(Rx, Ry, a, b, thickness, S)
+
+    x=np.linspace(-a/2,a/2,150)
+    X,Y=np.meshgrid(x,x)
+
+    meps = np.finfo(np.float).eps #machine epsilon
+
+    int2char_ind = ['','x','y','z']
+    
+    meps = np.finfo(np.float).eps #machine epsilon
+
+    #Check stresses
+    for i in range(1,3):
+        for j in range(1,3):
+            num_ind = i*10+j
+            str_ind = int2char_ind[i]+int2char_ind[j]
+            
+            assert np.all(np.logical_or(np.abs(stress_iso[num_ind](X,Y) - stress_aniso[num_ind](X,Y)) < meps,
+                                        np.logical_and(np.isnan(stress_iso[num_ind](X,Y)), np.isnan(stress_aniso[num_ind](X,Y)))))
+            assert np.all(np.logical_or(np.abs(stress_iso[str_ind](X,Y) - stress_aniso[str_ind](X,Y)) < meps,
+                                        np.logical_and(np.isnan(stress_iso[str_ind](X,Y)), np.isnan(stress_aniso[str_ind](X,Y)))))
+
+    #Check strains
+    for i in range(1,4):
+        for j in range(1,4):
+            num_ind = i*10+j
+            str_ind = int2char_ind[i]+int2char_ind[j]
+            
+            assert np.all(np.logical_or(np.abs(strain_iso[num_ind](X,Y) - strain_aniso[num_ind](X,Y)) < meps,
+                                        np.logical_and(np.isnan(strain_iso[num_ind](X,Y)), np.isnan(strain_aniso[num_ind](X,Y)))))
+            assert np.all(np.logical_or(np.abs(strain_iso[str_ind](X,Y) - strain_aniso[str_ind](X,Y)) < meps,
+                                        np.logical_and(np.isnan(strain_iso[str_ind](X,Y)), np.isnan(strain_aniso[str_ind](X,Y)))))
+
+    #Check contact forces
+    assert np.all(np.logical_or(np.abs(P_iso(X,Y) - P_aniso(X,Y)) < meps,
+                                np.logical_and(np.isnan(P_iso(X,Y)), np.isnan(P_aniso(X,Y)))))    
