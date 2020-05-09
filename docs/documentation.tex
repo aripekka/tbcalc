@@ -80,6 +80,29 @@ P = \frac{E' d}{16 R_1^2 R_2^2} \left[
 \right].
 \end{equation}
 
+\subsubsection{Isotropic rectangular}
+The components of the transverse stress tensor of an isotropic rectangular wafer with the side lengths $a$ and $b$ aligned with the meridional and sagittal radii of curvature $R_1$ and $R_2$, respectively, are
+\begin{align}
+\sigma_{xx} &= \frac{E}{g R_1 R_2}\left[\frac{a^2}{12}- x^2 +\left(\frac{1+\nu}{2}+5\frac{ a^2}{b^2} +\frac{1-\nu}{2} \frac{a^4}{b^4}\right)\left(\frac{b^2}{12}-y^2 \right)\right]  \\
+\sigma_{yy} &= \frac{E}{g R_1 R_2}\left[\frac{b^2}{12}- y^2 +\left(\frac{1+\nu}{2} +5\frac{ b^2}{a^2} +\frac{1-\nu}{2} \frac{b^4}{a^4}\right)\left(\frac{a^2}{12}-x^2 \right)\right]  \\
+\sigma_{xy} &= \frac{2 E}{g R_1 R_2}xy, 
+\end{align}
+where
+\begin{equation}
+g = 8+10 \left(\frac{a^2}{b^2} + \frac{b^2}{a^2}\right) + (1-\nu)\left(\frac{a^2}{b^2} - \frac{b^2}{a^2}\right)^2.
+\end{equation}
+The stretching strain tensor components are
+\begin{equation}
+u_{xx} = \frac{\sigma_{xx}-\nu \sigma_{yy}}{E} \quad u_{yy} = \frac{\sigma_{yy}-\nu \sigma_{xx}}{E} \quad u_{xy} = \frac{1+\nu}{E}\sigma_{xy} \quad u_{xz}=u_{yz}=0 \quad  u_{zz} = -\frac{\nu}{E}(\sigma_{xx}+\sigma_{yy})
+\end{equation}
+and the contact force
+\begin{align}
+P = - \frac{Ed}{gR_1^2R_2^2}\Bigg[
+&\left( R_1 \left(\frac{1+\nu}{2} +5\frac{ b^2}{a^2} +\frac{1-\nu}{2} \frac{b^4}{a^4}\right) + R_2\right)\left(\frac{a^2}{12}-x^2 \right) \nonumber \\ +
+&\left( R_2 \left(\frac{1+\nu}{2}+5\frac{ a^2}{b^2} +\frac{1-\nu}{2} \frac{a^4}{b^4}\right)
++ R_1 \right)\left(\frac{b^2}{12}-y^2 \right) \Bigg]
+\end{align}
+
 \bibliographystyle{unsrt}
 \bibliography{documentation}
 \end{document}
