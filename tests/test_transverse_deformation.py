@@ -245,4 +245,90 @@ def test_anisotropic_circular_vs_isotropic_circular():
     assert np.all(np.logical_or(np.abs(P_iso(X,Y) - P_aniso(X,Y)) < meps,
                                 np.logical_and(np.isnan(P_iso(X,Y)), np.isnan(P_aniso(X,Y)))))
     
+def test_isotropic_rectangular():
+
+    #Calculate the reference stresses and strains as implemented in the 
+    #deprecated sbcalc package
+
+    E = 165
+    nu = 0.22
+
+    thickness = 0.1
+
+    Rx = 1000.0
+    Ry = 500.0
+
+    R = np.sqrt(Rx*Ry)
+ 
+    a = 100.0   
+    b = 50.0   
+    
+    x=np.linspace(-a/2,a/2,150)
+    X,Y=np.meshgrid(x,x)
+
+    stress = {}
+    strain = {}
+
+    g = 8 + 10*((a/b)**2+(b/a)**2) + (1-nu)*((a/b)**2-(b/a)**2)**2
+
+    stress['xx'] = E/(g*R**2) * (a**2/12-X**2 + ((1+nu)/2 + 5*(a/b)**2 + (1-nu)/2*(a/b)**4)*(b**2/12-Y**2))
+    stress['yy'] = E/(g*R**2) * (b**2/12-Y**2 + ((1+nu)/2 + 5*(b/a)**2 + (1-nu)/2*(b/a)**4)*(a**2/12-X**2)) #sbcalc has a typo on this line (corrected here)
+    stress['xy'] = 2*E/(g*R**2)*X*Y
+    stress['yx'] = stress['xy']
+
+    strain['zz'] = nu/(g*R**2) * (((3+nu)/2+5*(b/a)**2+(1-nu)/2*(b/a)**4)*(X**2 - a**2/12)+\
+                                  ((3+nu)/2+5*(a/b)**2+(1-nu)/2*(a/b)**4)*(Y**2 - b**2/12))
+
+    for k in stress:
+        stress[k][np.abs(X) > a/2] = np.nan
+        stress[k][np.abs(Y) > b/2] = np.nan        
+    for k in strain:
+        strain[k][np.abs(X) > a/2] = np.nan
+        strain[k][np.abs(Y) > b/2] = np.nan  
+
+    #add int indexing
+    int2char_ind = ['','x','y','z']
+
+    for i in range(1,3):
+        for j in range(1,3):
+            stress[i*10+j] = stress[int2char_ind[i]+int2char_ind[j]]
+
+    for i in range(3,4):
+        for j in range(3,4):
+            strain[i*10+j] = strain[int2char_ind[i]+int2char_ind[j]]
+
+    #COMPARE THE REFERENCE TO THE IMPLEMENTATION
+    stress_imp, strain_imp, P_imp = isotropic_rectangular(Rx, Ry, a, b, thickness, nu, E)
+    
+    meps = np.finfo(np.float).eps #machine epsilon
+    
+    for i in range(1,3):
+        for j in range(1,3):
+
+            num_ind = i*10+j
+            str_ind = int2char_ind[i]+int2char_ind[j]
+
+            print(str_ind)
+            
+            assert np.all(np.logical_or(np.abs(stress[num_ind] - stress_imp[num_ind](X,Y)) < meps,
+                                        np.logical_and(np.isnan(stress[num_ind]), np.isnan(stress_imp[num_ind](X,Y)))))
+            assert np.all(np.logical_or(np.abs(stress[str_ind] - stress_imp[str_ind](X,Y)) < meps,
+                                        np.logical_and(np.isnan(stress[str_ind]), np.isnan(stress_imp[str_ind](X,Y)))))
+
+    for i in range(3,4):
+        for j in range(3,4):
+            num_ind = i*10+j
+            str_ind = int2char_ind[i]+int2char_ind[j]
+            
+            assert np.all(np.logical_or(np.abs(strain[num_ind] - strain_imp[num_ind](X,Y)) < meps,
+                                        np.logical_and(np.isnan(strain[num_ind]), np.isnan(strain_imp[num_ind](X,Y)))))
+            assert np.all(np.logical_or(np.abs(strain[str_ind] - strain_imp[str_ind](X,Y)) < meps,
+                                        np.logical_and(np.isnan(strain[str_ind]), np.isnan(strain_imp[str_ind](X,Y)))))
+
+    #check the contact force
+    P = -thickness*(stress['xx']/Rx+stress['yy']/Ry)
+    
+    assert np.all(np.logical_or(np.abs(P - P_imp(X,Y)) < meps,
+                                np.logical_and(np.isnan(P), np.isnan(P_imp(X,Y)))))
+
     
