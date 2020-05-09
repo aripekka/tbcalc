@@ -457,13 +457,13 @@ def isotropic_rectangular(Rx,Ry,a,b,thickness,nu,E):
     strain = {}    
 
     def epsilon_xx(x,y):
-        return (sigma_xx - nu*sigma_yy)/E
+        return (sigma_xx(x,y) - nu*sigma_yy(x,y))/E
 
     def epsilon_yy(x,y):
-        return (sigma_yy - nu*sigma_xx)/E
+        return (sigma_yy(x,y) - nu*sigma_xx(x,y))/E
 
     def epsilon_xy(x,y):
-        return (1+nu)*sigma_xy/E
+        return (1+nu)*sigma_xy(x,y)/E
 
     def epsilon_xz(x,y):
         strain = np.zeros(np.array(x).shape)
@@ -476,7 +476,7 @@ def isotropic_rectangular(Rx,Ry,a,b,thickness,nu,E):
         return strain
 
     def epsilon_zz(x,y):
-        return -nu*(sigma_xx + sigma_yy)/E
+        return -nu*(sigma_xx(x,y) + sigma_yy(x,y))/E
 
     strain['xx'] = epsilon_xx
     strain['yy'] = epsilon_yy
