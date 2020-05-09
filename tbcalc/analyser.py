@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 from pyTTE import TakagiTaupin, Quantity, TTcrystal
+import tbcalc.transverse_deformation as transverse_deformation
+
 import numpy as np
 
 class Analyser:
@@ -300,6 +302,96 @@ class Analyser:
                 self.geometry_info['wafer_shape'] = 'rectangular'
             else:
                 raise KeyError('Both keywords a and b are required!')                
+
+    def calculate_deformation(self,length_unit = 'mm', pressure_unit = 'GPa'):
+        '''
+        Calculates and returns the transverse stress and strain tensors, and
+        the contact force per unit area due to toroidal bending. 
+
+        Parameters
+        ----------
+        
+        length_unit : str
+            Determines the units of input parameters to the output functions 
+            (see the returns for details). Most SI units of length are allowed,
+            default is mm.
+
+        pressure_unit : str
+            Determines the units of stress tensor and the contact force. Most 
+            SI units of pressure are allowed, default is GPa           
+
+        Returns
+        -------
+        stress : dict
+            Functions returning the transverse stress tensor components as a 
+            function of position on the crystal wafer surface. Can be indexed either 
+            with x,y or 1,2. For example, sigma_xy at x = X and y = Y is given by
+    
+            stress['xy'](X, Y)
+            OR 
+            stress[12](X, Y)
+    
+            Functions return nan for coordinates outside the wafer.
+    
+            Units of the position is determined by length_unit and the unit of 
+            stress by pressure unit is that of E.
+
+        strain : dict
+            Functions returning the strain tensor components due to the transverse
+            stress as a function of position on the crystal wafer surface. Can be 
+            indexed either with x,y,z or 1,2,3. For example, epsilon_zz at x = X 
+            and y = Y is given by
+    
+            strain['zz'](X, Y)
+            OR 
+            strain[33](X, Y)
+    
+            Functions return nan for coordinates outside the wafer.
+    
+            Units of the position are same as for inputs Rx, Ry, and L.
+    
+        contact_force : function
+            Contact force between the wafer and the substrate per unit area as a
+            function of position i.e. contact_force(X, Y).
+
+        '''
+        
+        if self.geometry_info['wafer_shape'] == 'circular':
+            if self.crystal_object.isotropy == 'isotropic':
+                return transverse_deformation.isotropic_circular(self.crystal_object.Rx.in_units(length_unit),
+                                                                 self.crystal_object.Ry.in_units(length_unit),
+                                                                 self.geometry_info['diameter'].in_units(length_unit),
+                                                                 self.crystal_object.thickness.in_units(length_unit),
+                                                                 self.crystal_object.nu,
+                                                                 self.crystal_object.E.in_units(pressure_unit))
+            else:
+                return transverse_deformation.anisotropic_circular(self.crystal_object.Rx.in_units(length_unit),
+                                                                   self.crystal_object.Ry.in_units(length_unit),
+                                                                   self.geometry_info['diameter'].in_units(length_unit),
+                                                                   self.crystal_object.thickness.in_units(length_unit),
+                                                                   self.crystal_object.S.in_units(pressure_unit+'^-1'))
+                
+        elif self.geometry_info['wafer_shape'] == 'rectangular':
+            if self.crystal_object.isotropy == 'isotropic':
+                return transverse_deformation.isotropic_rectangular(self.crystal_object.Rx.in_units(length_unit),
+                                                                    self.crystal_object.Ry.in_units(length_unit),
+                                                                    self.geometry_info['a'].in_units(length_unit),
+                                                                    self.geometry_info['b'].in_units(length_unit),
+                                                                    self.crystal_object.thickness.in_units(length_unit),
+                                                                    self.crystal_object.nu,
+                                                                    self.crystal_object.E.in_units(pressure_unit))
+            else:
+                return transverse_deformation.anisotropic_rectangular(self.crystal_object.Rx.in_units(length_unit),
+                                                                      self.crystal_object.Ry.in_units(length_unit),
+                                                                      self.geometry_info['a'].in_units(length_unit),
+                                                                      self.geometry_info['b'].in_units(length_unit),
+                                                                      self.crystal_object.thickness.in_units(length_unit),
+                                                                      self.crystal_object.S.in_units(pressure_unit+'^-1'))
+            
+        elif self.geometry_info['wafer_shape'] == 'strip-bent':            
+            raise NotImplementedError('Strip-bent analyser is not yet implemented!')
+        else:
+            raise NotImplementedError('Custom wafer shapes are not supported yet!')
 
     def __str__(self):
 

@@ -168,3 +168,66 @@ def test_init_TTcrystal():
         assert ana.crystal_object.Ry.value == i['Ry'].value
         
         assert ana.crystal_object.fix_to_axes == 'shape'
+
+def test_deformation():
+    #Correct inputs
+    correct_input = []
+    
+    #circular analyser
+    correct_input.append([{
+                         'crystal' : 'Si',
+                         'hkl' : [4,0,0],
+                         'thickness' : Quantity(150,'um'),
+                         'Rx' : Quantity(1,'m'),
+                         'Ry' : Quantity(0.5,'m'),
+                         'diameter' : Quantity(100,'mm'),
+                         }, 'circular'])
+
+    #Spherical bending
+    correct_input.append([{
+                         'crystal' : 'Si',
+                         'hkl' : [4,0,0],
+                         'thickness' : Quantity(150,'um'),
+                         'R' : Quantity(1,'m'),
+                         'diameter' : Quantity(100,'mm'),
+                         }, 'circular'])
+
+    correct_input.append([{
+                         'crystal' : 'Si',
+                         'hkl' : [4,0,0],
+                         'thickness' : Quantity(150,'um'),
+                         'R' : Quantity(1,'m'),
+                         'Ry' : Quantity(0.5,'m'),
+                         'diameter' : Quantity(100,'mm'),
+                         }, 'circular'])
+
+
+    #rectangular analyser
+    correct_input.append([{
+                         'crystal' : 'Si',
+                         'hkl' : [4,0,0],
+                         'thickness' : Quantity(150,'um'),
+                         'Rx' : Quantity(1,'m'),
+                         'Ry' : Quantity(0.5,'m'),
+                         'a' : Quantity(100,'mm'),
+                         'b' : Quantity(50,'mm'),
+                         }, 'rectangular'])
+
+    #strip-bent analyser
+    correct_input.append([{
+                         'crystal' : 'Si',
+                         'hkl' : [4,0,0],
+                         'thickness' : Quantity(150,'um'),
+                         'Rx' : Quantity(1,'m'),
+                         'Ry' : Quantity(0.5,'m'),
+                         'diameter' : Quantity(100,'mm'),
+                         'strip_width' : Quantity(15,'mm'),
+                         },'strip-bent'])
+
+    for ci in correct_input:
+        ana = Analyser(**ci[0])
+
+        try:
+            ana.calculate_deformation()
+        except NotImplementedError:
+            pass

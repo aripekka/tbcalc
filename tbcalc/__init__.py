@@ -2,4 +2,4 @@
 from .analyser import Analyser
 from pyTTE import Quantity
 
-__all__ = ['Analyser','Quantity']
+__all__ = ['Analyser','Quantity','transverse_deformation']
