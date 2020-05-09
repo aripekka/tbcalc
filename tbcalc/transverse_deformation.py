@@ -165,6 +165,9 @@ def isotropic_circular(Rx,Ry,L,thickness,nu,E):
     
     #Calculate the contact force
     def contact_force(x, y):
-        return E*thickness/(16*Rx**2*Ry**2)*((3*Rx + Ry)*x**2 + (Rx + 3*Ry)*y**2 - (Rx + Ry)*L**2/4)
+        P = E*thickness/(16*Rx**2*Ry**2)*((3*Rx + Ry)*x**2 + (Rx + 3*Ry)*y**2 - (Rx + Ry)*L**2/4)
+        P[x**2 + y**2 > L**2/4] = np.nan
+        return P
     
     return stress, strain, contact_force
+
