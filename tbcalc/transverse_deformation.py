@@ -171,3 +171,186 @@ def isotropic_circular(Rx,Ry,L,thickness,nu,E):
     
     return stress, strain, contact_force
 
+def anisotropic_circular(Rx,Ry,L,thickness,S):
+    '''
+    Returns the functions to calculate the stress and strain tensor field 
+    components as a function of position on the crystal wafer for an isotropic
+    toroidally bent crystal analyser.
+
+    Parameters
+    ----------
+    Rx : float
+        Meridional bending radius
+    Ry : float
+        Sagittal bending radiu
+    L : float
+        Diameter of the wafer
+    thickness : float
+        Thickness of the wafer
+    S : 6x6 numpy array
+        Compliance matrix in the Voigt notation. The inverse of units determine
+        the units of the returned stress tensor components.
+
+    For sensible output, the physical units of Rx, Ry, L, and thickness have to
+    be the same.
+
+    Returns
+    -------
+    stress : dict
+        Functions returning the transverse stress tensor components as a 
+        function of position on the crystal wafer surface. Can be indexed either 
+        with x,y or 1,2. For example, sigma_xy at x = X and y = Y is given by
+
+        stress['xy'](X, Y)
+        OR 
+        stress[12](X, Y)
+
+        Functions return nan for coordinates outside the wafer.
+
+        Units of the position are same as for inputs Rx, Ry, and L, and the 
+        unit of stress is that of E.
+
+    strain : dict
+        Functions returning the strain tensor components due to the transverse
+        stress as a function of position on the crystal wafer surface. Can be 
+        indexed either with x,y,z or 1,2,3. For example, epsilon_zz at x = X 
+        and y = Y is given by
+
+        strain['zz'](X, Y)
+        OR 
+        strain[33](X, Y)
+
+        Functions return nan for coordinates outside the wafer.
+
+        Units of the position are same as for inputs Rx, Ry, and L.
+
+    contact_force : function
+        Contact force between the wafer and the substrate per unit area as a
+        function of position i.e. contact_force(X, Y).
+
+    '''
+
+    S = S.copy()
+
+    #Effective Young's modulus
+    E_eff = 8/(3*(S[0,0]+S[1,1]) + 2*S[0,1] + S[5,5])
+
+    #Define stress functions
+    stress = {}
+    
+    def sigma_xx(x,y):
+        stress = E_eff/(16*Rx*Ry)*(L**2/4 - x**2 - 3*y**2)
+        stress[x**2 + y**2 > L**2/4] = np.nan
+        return stress
+
+    def sigma_yy(x,y):
+        stress = E_eff/(16*Rx*Ry)*(L**2/4 - y**2 - 3*x**2)
+        stress[x**2 + y**2 > L**2/4] = np.nan
+        return stress
+
+    def sigma_xy(x,y):
+        stress = E_eff/(8*Rx*Ry)*x*y
+        stress[x**2 + y**2 > L**2/4] = np.nan
+        return stress
+        
+    stress['xx'] = sigma_xx
+    stress['yy'] = sigma_yy
+    stress['xy'] = sigma_xy
+    stress['yx'] = sigma_xy
+
+    #Add alternative indexing
+    stress[11] = stress['xx']
+    stress[22] = stress['yy']
+    stress[12] = stress['xy']    
+    stress[21] = stress['yx']
+
+    #Define strain functions
+    strain = {}    
+
+    def epsilon_xx(x,y):
+        strain = E_eff/(16*Rx*Ry)*(  (S[0,0] + S[0,1])*L**2/4 
+                                   - (S[0,0] + 3*S[0,1])*x**2
+                                   - (3*S[0,0] + S[0,1])*y**2 
+                                   + 2*S[0,5]*x*y
+                                  )
+        strain[x**2 + y**2 > L**2/4] = np.nan
+        return strain
+
+    def epsilon_yy(x,y):
+        strain = E_eff/(16*Rx*Ry)*(  (S[1,0] + S[1,1])*L**2/4 
+                                   - (S[1,0] + 3*S[1,1])*x**2
+                                   - (3*S[1,0] + S[1,1])*y**2 
+                                   + 2*S[1,5]*x*y
+                                  )
+        strain[x**2 + y**2 > L**2/4] = np.nan
+        return strain
+
+    def epsilon_zz(x,y):
+        strain = E_eff/(16*Rx*Ry)*(  (S[2,0] + S[2,1])*L**2/4
+                                   - (S[2,0] + 3*S[2,1])*x**2
+                                   - (3*S[2,0] + S[2,1])*y**2 
+                                   + 2*S[2,5]*x*y
+                                  )
+        strain[x**2 + y**2 > L**2/4] = np.nan
+        return strain
+
+    def epsilon_xz(x,y):
+        strain = E_eff/(32*Rx*Ry)*(  (S[3,0] + S[3,1])*L**2/4 
+                                   - (S[3,0] + 3*S[3,1])*x**2
+                                   - (3*S[3,0] + S[3,1])*y**2 
+                                   + 2*S[3,5]*x*y
+                                  )
+        strain[x**2 + y**2 > L**2/4] = np.nan
+        return strain
+
+    def epsilon_yz(x,y):
+        strain = E_eff/(32*Rx*Ry)*(  (S[4,0] + S[4,1])*L**2/4 
+                                   - (S[4,0] + 3*S[4,1])*x**2
+                                   - (3*S[4,0] + S[4,1])*y**2 
+                                   + 2*S[4,5]*x*y
+                                  )
+        strain[x**2 + y**2 > L**2/4] = np.nan
+        return strain
+
+    def epsilon_xy(x,y):
+        strain = E_eff/(32*Rx*Ry)*(  (S[5,0] + S[5,1])*L**2/4 
+                                   - (S[5,0] + 3*S[5,1])*x**2
+                                   - (3*S[5,0] + S[5,1])*y**2 
+                                   + 2*S[5,5]*x*y
+                                  )
+        strain[x**2 + y**2 > L**2/4] = np.nan
+        return strain
+
+
+    strain['xx'] = epsilon_xx
+    strain['yy'] = epsilon_yy
+    strain['xy'] = epsilon_xy 
+    strain['yx'] = epsilon_xy
+
+    strain['xz'] = epsilon_xz
+    strain['zx'] = epsilon_xz
+    strain['yz'] = epsilon_yz
+    strain['zy'] = epsilon_yz
+
+    strain['zz'] = epsilon_zz
+    
+    #Add alternative indexing        
+    strain[11] = strain['xx']
+    strain[22] = strain['yy']
+    strain[12] = strain['xy']    
+    strain[21] = strain['yx']
+
+    strain[13] = strain['xz']    
+    strain[31] = strain['zx']
+    strain[23] = strain['yz']    
+    strain[32] = strain['zy']
+    
+    strain[33] = strain['zz']
+    
+    #Calculate the contact force
+    def contact_force(x, y):
+        P = E_eff*thickness/(16*Rx**2*Ry**2)*((3*Rx + Ry)*x**2 + (Rx + 3*Ry)*y**2 - (Rx + Ry)*L**2/4)
+        P[x**2 + y**2 > L**2/4] = np.nan
+        return P
+    
+    return stress, strain, contact_force
