@@ -103,6 +103,72 @@ P = - \frac{Ed}{gR_1^2R_2^2}\Bigg[
 + R_1 \right)\left(\frac{b^2}{12}-y^2 \right) \Bigg]
 \end{align}
 
+\subsubsection{Anisotropic rectangular}
+For an anisotropic rectangular wafer, the transverse stress tensor components are
+\begin{align}
+\sigma_{xx} &= C_{02} + 12 C_{22}x^2 + 24 C_{13} xy + 12 C_{04} y^2 \\
+\sigma_{yy} &= C_{20} + 12 C_{22}y^2 + 24 C_{31} xy + 12 C_{40} x^2 \\
+\sigma_{xy} &= -C_{11}  - 12 C_{31} x^2 - 24 C_{22} xy - 12 C_{13} y^2 
+\end{align}
+from which we can calculate the corresponding strain tensor
+\begin{align}
+u_{xx} &= S_{11} \sigma_{xx} + S_{12} \sigma_{yy} + S_{16} \sigma_{xy} \\
+u_{yy} &= S_{21} \sigma_{xx} + S_{22} \sigma_{yy} + S_{26} \sigma_{xy} \\
+u_{xy} &= \frac{1}{2}\left(S_{61}\sigma_{xx} + S_{62} \sigma_{yy} + S_{66} \sigma_{xy} \right) \\
+u_{xz} &= \frac{1}{2}\left(S_{41}\sigma_{xx} + S_{42} \sigma_{yy} + S_{46} \sigma_{xy} \right) \\
+u_{yz} &= \frac{1}{2}\left(S_{51}\sigma_{xx} + S_{52} \sigma_{yy} + S_{56} \sigma_{xy} \right)  \\
+u_{zz} &= S_{31} \sigma_{xx} + S_{32} \sigma_{yy} + S_{36} \sigma_{xy}
+\end{align}
+and the contact force per surface area
+\begin{equation}
+P = -d \left(\frac{\sigma_{xx}}{R_1} + \frac{\sigma_{yy}}{R_2} \right).
+\end{equation}
+The coefficients $C_{ij}$ are obtained by solving the matrix equation $\Lambda  \mathbf{C} = \mathbf{b}$ in terms of $\mathbf{C}$ where
+\begin{equation}
+\mathbf{C} = \left[ \begin{matrix}
+C_{11} & C_{20} & C_{02} & C_{22} & C_{31} & C_{13} & C_{40} & C_{04} & \lambda_1
+\end{matrix}
+\right]^{\mathrm{T}},
+\end{equation}
+\begin{equation}
+\mathbf{b} = \left[ \begin{matrix}
+0 & 0 & 0 & 0 & 0 &0 &0 & 0 & -(24 R_1 R_2)^{-1}
+\end{matrix}
+\right]^{\mathrm{T}},
+\end{equation}
+and
+\begin{equation}
+\Lambda = \left[
+\begin{matrix}
+ S_{66} & -S_{26} & -S_{16} & \Lambda_{14} & S_{66} a^2 & S_{66} b^2 & -S_{26} a^2 & -S_{16} b^2 & 0 \\
+-S_{26} & S_{22} & S_{12} & \Lambda_{24}  & - S_{26} a^2 & -S_{26} b^2 & S_{22} a^2 & S_{12} b^2 & 0 \\
+-S_{16} & S_{12} & S_{11} & \Lambda_{34} & - S_{16} a^2 & -S_{16} b^2 & S_{12} a^2 & S_{11} b^2 & 0 \\
+ \Lambda_{41} & \Lambda_{42} & \Lambda_{43} & \Lambda_{44} & \Lambda_{45} & \Lambda_{46} & \Lambda_{47} & \Lambda_{48} & \Lambda_{49} \\
+5 S_{66} a^2 & -5 S_{26} a^2 & -5 S_{16} a^2 & \Lambda_{54} & \Lambda_{55} & \Lambda_{56} & -9 S_{26} a^4 & -5 S_{16} a^2 b^2 & - 2 S_{26} \\
+5 S_{66} b^2 & -5 S_{26} b^2 & -5 S_{16} b^2 & \Lambda_{64} & \Lambda_{65} & \Lambda_{66} & -5 S_{26} a^2 b^2 & -9 S_{16} b^4 & - 2 S_{16} \\
+-5 S_{26} a^2 & 5 S_{22} a^2 & 5 S_{12} a^2 & \Lambda_{74} & -9 S_{26} a^4 & -5 S_{26} a^2 b^2 & 9 S_{22} a^4 & 5 S_{12} a^2 b^2 & S_{22} \\
+-5 S_{16} b^2 & 5 S_{12} b^2 & 5 S_{11} b^2 & \Lambda_{84} & -5 S_{16} a^2 b^2 & -9 S_{16} b^4 & 5 S_{12} a^2 b^2 & 9 S_{11} b^4 & S_{11} \\
+0 & 0 & 0 & \Lambda_{94} & -2 S_{26} & -2 S_{16} & S_{22} & S_{11} & 0
+\end{matrix}
+\right]
+\end{equation}
+with
+\begin{align}
+\Lambda_{14} &= -S_{16} a^2 -S_{26}b^2 & \Lambda_{24} &= S_{12}a^2 + S_{22}b^2 \nonumber  \\
+\Lambda_{34} &= S_{11}a^2 + S_{12}b^2 & \Lambda_{41} &= -5 S_{16}a^2 - 5 S_{26}b^2 \nonumber  \\
+\Lambda_{42} &= 5 S_{12}a^2 + 5 S_{22}b^2 & \Lambda_{43} &= 5 S_{11}a^2 + 5 S_{12}b^2 \nonumber \\
+\Lambda_{44} &= 9 S_{11} a^4 + 9 S_{22} b^4 + 10 (S_{12}+2 S_{66})a^2 b^2 & 
+\Lambda_{45} &= -9 S_{16} a^4 -25 S_{26} a^2 b^2 \nonumber  \\
+\Lambda_{46} &= -25 S_{16}a^2b^2 -9 S_{26} b^4 & \Lambda_{47} &= 9 S_{12} a^4 + 5 S_{22} a^2 b^2 \nonumber \\
+\Lambda_{48} &= 5 S_{11} a^2 b^2 + 9 S_{12} b^4 & \Lambda_{49} &= 2 S_{12} + S_{66} \nonumber \\
+\Lambda_{54} &= -9 S_{16} a^4 -25 S_{26} a^2 b^2 & \Lambda_{55} &= 9 S_{66} a^4 + 20 S_{22} a^2 b^2 \nonumber \\
+\Lambda_{56} &= 5(4 S_{12} + S_{66} ) a^2 b^2 & \Lambda_{64} &=  -25 S_{16} a^2 b^2 -9 S_{26} b^4 \nonumber  \\
+\Lambda_{65} &= 5(4 S_{12} + S_{66}) a^2 b^2 & \Lambda_{66} &= 20 S_{11} a^2 b^2 + 9 S_{66} b^4 \nonumber \\
+\Lambda_{74} &= 9 S_{12} a^4 + 5 S_{22} a^2 b^2 & \Lambda_{84} &= 5 S_{11} a^2 b^2 + 9 S_{12} b^4 \nonumber \\
+\Lambda_{94} &=  2 S_{12} + S_{66} & & \nonumber 
+\end{align}
+
+
 \bibliographystyle{unsrt}
 \bibliography{documentation}
 \end{document}
