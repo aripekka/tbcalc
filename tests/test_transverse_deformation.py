@@ -73,7 +73,7 @@ def test_isotropic_circular():
             strain[i*10+j] = strain[int2char_ind[i]+int2char_ind[j]]
 
     #COMPARE THE REFERENCE TO THE IMPLEMENTATION
-    stress_imp, strain_imp, _ = isotropic_circular(Rx, Ry, L, thickness, nu, E)
+    stress_imp, strain_imp, P_imp = isotropic_circular(Rx, Ry, L, thickness, nu, E)
     
     meps = np.finfo(np.float).eps #machine epsilon
 
@@ -96,3 +96,10 @@ def test_isotropic_circular():
                                         np.logical_and(np.isnan(strain[num_ind]), np.isnan(strain_imp[num_ind](X,Y)))))
             assert np.all(np.logical_or(np.abs(strain[str_ind] - strain_imp[str_ind](X,Y)) < meps,
                                         np.logical_and(np.isnan(strain[str_ind]), np.isnan(strain_imp[str_ind](X,Y)))))
+
+    #check the contact force
+    P = -thickness*(stress['xx']/Rx+stress['yy']/Ry)
+    
+    assert np.all(np.logical_or(np.abs(P - P_imp(X,Y)) < meps,
+                                np.logical_and(np.isnan(P), np.isnan(P_imp(X,Y)))))
+    
