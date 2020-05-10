@@ -27,7 +27,7 @@ As formally shown \cite{Honkanen_2016}, the effect of a constant component in a 
 \subsection{Depth-dependent Takagi-Taupin curve}
 The 1D TT-curve is calculated using \textsc{PyTTE}. In v. 1.0 of \textsc{tbcalc} it is assumed that the main axes of curvature of TBCA:s are along the meridional and sagittal directions with respect to the diffraction plane and coincide, respectively, with the $x$- and $y$-axes of the Cartesian system used in the code and the manuscript \cite{honkanen2020}. By default, the internal anisotropic compliance matrices\footnote{Values from CRC Handbook of Chemistry and Physics, 82nd edition (2001)} are used for elastic parameters and \textsc{xraylib}\footnote{\url{https://github.com/tschoonj/xraylib}} for crystallograpic parameters and structure factors.
 
-\subsection{Transverse stress and strain tensor fields}
+\subsection{Transverse stress and strain tensor fields \label{sec:deformations}}
 For convenience, this section lists the equations for the transverse stress tensor and the strain it causes. Refer to \cite{honkanen2020} for the derivation and discussion.
 \subsubsection{Isotropic circular}
 The components of the transverse stress tensor of an isotropic circular wafer with the diameter $L$ and meridional and sagittal bending radii $R_1$ and $R_2$, respectively, are
@@ -167,6 +167,34 @@ with
 \Lambda_{74} &= 9 S_{12} a^4 + 5 S_{22} a^2 b^2 & \Lambda_{84} &= 5 S_{11} a^2 b^2 + 9 S_{12} b^4 \nonumber \\
 \Lambda_{94} &=  2 S_{12} + S_{66} & & \nonumber 
 \end{align}
+
+\subsubsection{Tensors in cylindrical coordinates}
+Internally \textsc{tbcalc} performs the computations in the Cartesian coordinates $(x,y,z)$ but especially with the circular analysers expressing the strain and stress tensors in the cylindrical system $(r,\phi,z)$ can be useful. The implemented coordinate transform \texttt{cartesian\_tensors\_to\_cylindrical} uses the following formula
+\begin{align}
+T'_{rr} &=   \cos^2 \phi T_{xx}  + 2 \sin \phi \cos \phi  T_{xy} +  \sin^2 \phi T_{yy} \\
+T'_{r \phi} &=  -  \sin \phi \cos \phi T_{xx} + (\cos^2 \phi - \sin^2 \phi) T_{xy} + \sin \phi \cos \phi T_{yy} \\
+T'_{\phi \phi} &= \sin^2 \phi T_{xx} - 2 \sin \phi \cos \phi  T_{xy} + \cos^2 \phi T_{yy} \\
+T'_{r z} &= \cos \phi T_{xz} + \sin \phi T_{yz} \\
+T'_{\phi z} &= - \sin \phi T_{xz} + \cos \phi T_{yz} \\
+T'_{z z} &= T_{zz}. 
+\end{align}
+Strictly speaking $\phi$ is actually handled here as $r \phi$ in order to keep the physical unit of the coordinates and thus the dimensions of the transformed tensor components consistent with the Cartesian representation.
+
+\subsection{Energy and angle shifts due to transverse deformation}
+Locally the shape of the reflection curve is given by the 1D TT-curve but its position on the energy or angle scale is shifted by the transverse deformations given in Section~\ref{sec:deformations}. When the energy is scanned the shifts are given by
+\begin{equation}
+\frac{\Delta \mathcal{E}}{\mathcal{E}} = 
+- u_{zz} \cos^2 \phi - 2 u_{xz} \sin \phi \cos \phi
+- u_{xx} \sin^2 \phi 
++\left[\left(u_{zz} - u_{xx} \right) \sin \phi \cos \phi + 2 u_{x z} \sin^2 \phi \right] \cot \theta_B
+\end{equation}
+where $\theta_B$ is the Bragg angle and $\phi$ is the asymmetry angle. Similarly in the rocking angle scan the shifts in angle are given by
+\begin{equation}
+\Delta \theta = - \left( u_{zz} \cos^2 \phi + 2 u_{xz} \sin \phi \cos \phi
++ u_{xx} \sin^2 \phi \right) \tan \theta_B + \left(u_{zz} - u_{xx} \right) \sin \phi \cos \phi + 2 u_{x z} \sin^2 \phi.
+\end{equation}
+
+
 
 
 \bibliographystyle{unsrt}
