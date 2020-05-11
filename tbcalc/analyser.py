@@ -117,10 +117,10 @@ class Analyser:
     Attributes
     ----------
 
-    crystal_object: TTcrystal
+    crystal_object : TTcrystal
         A TTcrystal object constructed from the input parameters
         
-    geometry_info: dict
+    geometry_info : dict
         Contains the information of the wafer geometry and analyser type. Has 
         the following keywords:
 
@@ -140,6 +140,9 @@ class Analyser:
             'strip_orientation' : str (strip-bent)
                 Orientation of the long dimension of the strips with respect to
                 to diffraction plane. Either 'meridional' or 'sagittal'
+
+    solution : dict or None
+        Contains the calculated reflectivity curve and its metadata.
     
     '''    
 
@@ -303,6 +306,8 @@ class Analyser:
             else:
                 raise KeyError('Both keywords a and b are required!')                
 
+        self.solution = None
+
     def calculate_deformation(self,length_unit = 'mm', pressure_unit = 'GPa'):
         '''
         Calculates and returns the transverse stress and strain tensors, and
@@ -392,6 +397,113 @@ class Analyser:
             raise NotImplementedError('Strip-bent analyser is not yet implemented!')
         else:
             raise NotImplementedError('Custom wafer shapes are not supported yet!')
+
+    def energy_shifts(self, bragg_energy_or_angle, length_unit = 'mm'):
+        '''
+        Returns a function that calculates the energy shifts as function of 
+        position over the wafer surface.
+
+        Parameters
+        ----------
+        bragg_energy_or_angle : pyTTE.Quantity of type energy or angle
+            Energy of the photons or the Bragg angle 
+
+        length_scale : str
+            Determines the units of the wafer surface coordinates. 
+            Default is 'mm'.
+
+        Returns
+        -------
+        deltaE : function
+            Function of surface coordinates i.e. deltaE(x,y) returning the 
+            energy shift due to transverse strain. Returns nan outside the 
+            wafer.
+        '''
+
+        u = self.calculate_deformation(length_unit = length_unit)[1]
+
+        phi = self.crystal_object.asymmetry.in_units('rad')
+
+        cos_phi = np.cos(phi)
+        sin_phi = np.sin(phi)
+
+        if isinstance(bragg_energy_or_angle, Quantity):
+            if bragg_energy_or_angle.type() == 'energy':
+                bragg_energy = bragg_energy_or_angle.copy()
+                bragg_angle = self.crystal_object.bragg_angle(bragg_energy)
+                
+            elif bragg_energy_or_angle.type() == 'angle':
+                bragg_angle = bragg_energy_or_angle.copy()
+                bragg_energy = self.crystal_object.bragg_energy(bragg_angle)
+            else:
+                raise TypeError('bragg_energy_or_angle has to be pyTTE.Quantity of type energy or angle!')
+        else:                
+            raise TypeError('bragg_energy_or_angle has to be pyTTE.Quantity of type energy or angle!')
+        
+        cot_thb = 1/np.tan(bragg_angle.in_units('rad'))
+
+        def deltaE(x,y):
+            return bragg_energy*(-   u['zz'](x,y)*cos_phi**2 
+                                 - 2*u['xz'](x,y)*sin_phi*cos_phi 
+                                 -   u['xx'](x,y)*sin_phi**2
+                                 +  (u['zz'](x,y)-u['xx'](x,y))*sin_phi*cos_phi*cot_thb
+                                 + 2*u['xz'](x,y)*sin_phi**2*cot_thb
+                                )
+
+        return deltaE
+
+    def angle_shifts(self, bragg_energy_or_angle, length_unit = 'mm'):
+        '''
+        Returns a function that calculates the angle shifts as function of 
+        position over the wafer surface.
+
+        Parameters
+        ----------
+        bragg_energy_or_angle : pyTTE.Quantity of type energy or angle
+            Energy of the photons or the Bragg angle 
+
+        length_scale : str
+            Determines the units of the wafer surface coordinates. 
+            Default is 'mm'.
+
+
+        Returns
+        -------
+        deltaTh : function
+            Function of surface coordinates i.e. deltaTh(x,y) returning the 
+            angle shift due to transverse strain. Returns nan outside the 
+            wafer.
+        '''
+
+        u = self.calculate_deformation(length_unit = length_unit)[1]
+
+        phi = self.crystal_object.asymmetry.in_units('rad')
+
+        cos_phi = np.cos(phi)
+        sin_phi = np.sin(phi)
+
+        if isinstance(bragg_energy_or_angle, Quantity):
+            if bragg_energy_or_angle.type() == 'energy':
+                bragg_angle = self.crystal_object.bragg_angle(bragg_energy_or_angle)               
+            elif bragg_energy_or_angle.type() == 'angle':
+                bragg_angle = bragg_energy_or_angle.copy()
+            else:
+                raise TypeError('bragg_energy_or_angle has to be pyTTE.Quantity of type energy or angle!')
+        else:                
+            raise TypeError('bragg_energy_or_angle has to be pyTTE.Quantity of type energy or angle!')
+
+        tan_thb = np.tan(bragg_angle.in_units('rad'))
+
+        def deltaTh(x,y):
+            return Quantity((-   u['zz'](x,y)*cos_phi**2*tan_thb
+                             - 2*u['xz'](x,y)*sin_phi*cos_phi*tan_thb
+                             -   u['xx'](x,y)*sin_phi**2*tan_thb
+                             +  (u['zz'](x,y) - u['xx'](x,y))*sin_phi*cos_phi 
+                             + 2*u['xz'](x,y)*sin_phi**2), 'rad')
+
+        return deltaTh
+
+
 
     def __str__(self):
 
