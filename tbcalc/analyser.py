@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from pyTTE import TakagiTaupin, Quantity, TTcrystal
 import tbcalc.transverse_deformation as transverse_deformation
+from .johann_error import johann_error
 
 import numpy as np
 
@@ -503,7 +504,65 @@ class Analyser:
 
         return deltaTh
 
+    def johann_error(self, bragg_energy_or_angle, output_unit, length_unit = 'mm'):
+        '''
+        Returns a function that calculates the Johann error as function of position.
 
+        Parameters
+        ----------
+        bragg_energy_or_angle : pyTTE.Quantity of type energy or angle
+            Energy of the photons or the Bragg angle.
+            
+        output_unit : str
+            Determines the physical units of the calculated Johann error. Has
+            to be either units of energy (e.g. 'eV','keV') or angle (e.g. 'urad',
+            'arcsec') compliant with the pyTTE.Quantity
+            
+        length_unit : str, optional
+            The physical unit of the input coordinates of the returned function. 
+            The default is 'mm'.
+
+        Returns
+        -------
+        function
+            Calculates the Johann error as a function of position on the crystal
+            surface [function(x,y)]. Wrapped inside pyTTE.Quantity.
+
+        '''
+        
+        if isinstance(bragg_energy_or_angle, Quantity):
+            if bragg_energy_or_angle.type() == 'energy':
+                bragg_energy = bragg_energy_or_angle.copy()
+                bragg_angle = self.crystal_object.bragg_angle(bragg_energy)
+                
+            elif bragg_energy_or_angle.type() == 'angle':
+                bragg_angle = bragg_energy_or_angle.copy()
+                bragg_energy = self.crystal_object.bragg_energy(bragg_angle)
+            else:
+                raise TypeError('bragg_energy_or_angle has to be pyTTE.Quantity of type energy or angle!')
+        else:                
+            raise TypeError('bragg_energy_or_angle has to be pyTTE.Quantity of type energy or angle!')
+
+
+        Rx = self.crystal_object.Rx.in_units(length_unit)
+        Ry = self.crystal_object.Ry.in_units(length_unit)
+
+        th = bragg_angle.in_units('rad')
+
+        if Quantity(1, output_unit).type() == 'energy':
+            def johann_error_energy(X,Y):
+                output_values = johann_error(X,Y,Rx,Ry,th,energy=bragg_energy.in_units(output_unit))
+                return Quantity(output_values,output_unit)
+            return johann_error_energy
+
+        elif Quantity(1, output_unit).type() == 'angle':
+            def johann_error_angle(X,Y):
+                output_values = Quantity(johann_error(X,Y,Rx,Ry,th,energy=None),'rad')
+                return Quantity(output_values.in_units(output_unit),output_unit)
+            return johann_error_angle
+        else:
+            raise TypeError('output_unit has to be either a unit of energy or angle!')
+        
 
     def __str__(self):
 
