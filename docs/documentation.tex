@@ -207,6 +207,16 @@ and in terms of energy
 \end{equation}
 Note that the expression for $\Delta \theta$ is derived expanding $\sin x$ to the first order and thus ceases to be valid near $\theta = \pi/2$ if $R_1 \neq R_2$.
 
+\subsection{Convolution}
+The convolution of the 1D TT-curve and the calculated shift (transverse deformation + Johann error) is performed by dividing the analyser surface into a square grid, evaluating the shifts on each grid point, interpolating the 1D-TT curves with the applied shifts on a new grid, and taking the mean value of all interpolated curves. A boolean function of position can be applied to simulate masking of the crystal surface. After the normalization of the curve amplitude (see the next subsection) another convolution is applied to include \emph{e.g.} the incident bandwidth.
+
+\subsection{Normalization}
+Suppose that the source of X-rays in the Rowland circle geometry is a monochromatic, isotropic point source. The reflectivity curves are normalized to photon flux of the source integrated over full solid angle of 4$\pi$. Since the distance of the analyser center from the source in the Rowland circle geometry is $R_1 \sin \theta$ and the solid angle $\Omega$ covered by the analyser with the non-masked projected surface area $A \sin \theta$ is approximately
+\begin{equation}
+\Omega = \frac{A \sin \theta}{4 \pi (R_1 \sin \theta )^2} 
+= \frac{A }{4 \pi  R_1^2 \sin \theta}
+\end{equation}
+which is valid as long as $R_1 \sin \theta$ is much larger than the linear dimensions of the analyser. The convoluted reflectivity curve (without the incident bandwidth) is normalized by multiplying it with $\Omega$.
 
 
 \bibliographystyle{unsrt}
