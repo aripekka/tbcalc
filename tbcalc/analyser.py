@@ -563,6 +563,250 @@ class Analyser:
         else:
             raise TypeError('output_unit has to be either a unit of energy or angle!')
         
+    def run(self, scan, mask = None, include_johann_error = True, 
+            incident_bandwidth = None, N_grid = 10000):
+        '''
+        Calculates the reflectivity curve (resolution function) of a toroidally
+        bent crystal analyser. Stores the result and metadata in self.solution.
+
+        Parameters
+        ----------
+        scan : TTscan or str
+            Either an instance of TTscan or a path to file containing the scan 
+            parameters.
+
+        mask : function or None
+            Function of position [mask(x,y)] which returns True if the surface
+            element at (x,y) of the analyser is included in the calculation and
+            False if not. The origin of the coordinates is at the center of the
+            analyser and their units are mm. The function is required to be 
+            vectorized. Default is None (no masking).
+
+        include_johann_error : bool
+            True if the Johann error is included in the calculation and False
+            if not. Default is True.
+
+        incident_bandwidth : tuple or None
+            A tuple describing the resolution function of the incident radiation. 
+            Includes contributions affecting all parts of the crystal surface 
+            identically (e.g. monochromator bandwidth, source size). The 
+            contribution is included in the final curve by convolution.
+            
+            Tuple is expected to be of form (x,y) where y is the intensity of 
+            the radiation as a function x. y is a 1D Numpy array and x is a
+            Numpy array of corresponding shape wrapped in a pyTTE.Quantity.
+            x has to be monotonically increasing and the type of x has to be 
+            the same as the scan (energy or angle). For example, if energy scan 
+            is performed then x could be Quantity(np.linspace(-100,100,150),'meV').
+
+            The resolution curve y(x) is expected to be centred at x = 0 and 
+            the area under the curve normalized to 1. However, this is not 
+            enforced by the code and the user may choose not to follow these
+            expectations if not considered necessary.
+
+        N_grid : int
+            Number of grid points used to calculate the distribution of 
+            tranverse shifts and Johann error. This value determines the number
+            of points in a rectangular grid enclosing the surface of the 
+            analyser (neglecting any masking), so the number of points used 
+            for the calculation is lower than the value given. Default is 10000.
+        
+        Returns
+        -------
+            scan_values : Numpy array
+                The scan vector in units of input scan object (meV or urad if 
+                automatic scan point determination is used).
+            
+            reflectivity : Numpy array
+                The reflectivity curve (or resolution function) of the TBCA.
+                The curve is normalized to the photon flux integrated over 4*pi
+                solid angle of a hypothetical monochromatic and isotropic 
+                point source located at the Rowland circle.
+                
+
+        '''
+
+        #######################
+        #Calculate 1D TT-curve#
+        #######################
+                 
+        #Initialize pyTTE
+        tt_solver = TakagiTaupin(self.crystal_object, scan)
+
+        #Calculate the 1D TT-curve
+        tt_solver.run()
+        tt_solution = tt_solver.solution
+
+        ########################
+        #Transverse deformation#
+        ########################
+
+        #Calculate transverse strain tensor
+        stress, strain, contact_force = self.calculate_deformation()    
+
+        #define function to calculate the energy or angle shift along the surface 
+        if tt_solution['scan'].type() == 'energy':
+            shifts = self.energy_shifts(tt_solver.solution['bragg_angle'],
+                                        length_unit = 'mm')
+        else:
+            shifts = self.angle_shifts(tt_solver.solution['bragg_energy'],
+                                       length_unit = 'mm')
+
+        #############################################################################
+        #Define an evenly spaced grid to calculate the transverse shift distribution#
+        #############################################################################
+        
+        if self.geometry_info['wafer_shape'] in ['circular', 'strip-bent']:            
+            L = self.geometry_info['diameter'].in_units('mm')
+            x = np.linspace(-L/2, L/2, int(np.sqrt(N_grid)))
+            X,Y = np.meshgrid(x,x)
+            
+            area = np.pi*L**2/4
+        else:
+            a = self.geometry_info['a'].in_units('mm')
+            b = self.geometry_info['b'].in_units('mm')
+                        
+            x = np.linspace(-a/2, a/2, int(np.sqrt(N_grid*a/b)))
+            y = np.linspace(-b/2, b/2, int(np.sqrt(N_grid*b/a)))
+
+            X,Y = np.meshgrid(x,y) 
+
+            area = a*b
+
+        #Calculate the solid angle relative to 4*pi covered by the analyser to 
+        #be later used for normalization
+        Rx = self.crystal_object.Rx.in_units('mm')
+        th = tt_solver.solution['bragg_angle'].in_units('rad')
+        solid_angle = area/(4*np.pi*Rx**2*np.sin(th))
+            
+        ###########################################################################
+        #Evaluate the transverse shifts, mask, and Johann error on the grid points#
+        ###########################################################################
+        
+        shifts_grid = shifts(X,Y)
+
+        if mask is None:
+            mask_grid = np.ones(X.shape,dtype=np.bool)
+        else:
+            mask_grid = mask(X,Y)
+            
+        if include_johann_error:
+            johann_error_grid = self.johann_error(tt_solver.solution['bragg_angle'], 
+                                                  shifts_grid.units(), 
+                                                  length_unit = 'mm')(X,Y)                     
+        else:
+            johann_error_grid = Quantity(np.zeros(X.shape),shifts_grid.units())
+
+        ########################################################                    
+        #Convolve the 1D TT-solution with the transverse shifts#
+        ########################################################
+        
+        #Build a scan vector for the final curve        
+        tt_units = tt_solution['scan'].units()
+
+        ttscan_limits = (tt_solution['scan'].value.min(),
+                         tt_solution['scan'].value.max())
+
+        ttscan_min_spacing = np.abs(np.diff(tt_solution['scan'].value)).min()
+
+        #Sum the transverse shift and Johann error contributions and apply mask
+        shift_vector = (shifts_grid + johann_error_grid).in_units(tt_units)
+        
+        N_points_nonmasked = shift_vector[np.logical_not(np.isnan(shift_vector))].size
+        
+        shift_vector = shift_vector[mask_grid].reshape(-1)
+        shift_vector = shift_vector[np.logical_not(np.isnan(shift_vector))]
+
+        #Calculate the fraction of the analyser surface that is not masked
+        non_masked_frac = shift_vector.size/N_points_nonmasked
+
+        shift_limits = (shift_vector.min(), shift_vector.max())
+
+        if incident_bandwidth is not None:
+            x_bw0 = incident_bandwidth[0].in_units(tt_units)
+            y_bw0 = incident_bandwidth[1]
+
+            #map on even grid
+            min_diff_bw = np.abs(np.diff(x_bw0)).min()
+            x_bw = np.linspace(x_bw0.min(),x_bw0.max(),
+                               int(np.ceil((x_bw0.max()-x_bw0.min())/min_diff_bw)))
+            y_bw = np.interp(x_bw,x_bw0,y_bw0)
+
+            #Expand the scan range to later accommodate the incident bandwidth
+            bw_limits = (x_bw.min(), x_bw.max())
+        else:
+            bw_limits = [0,0]
+                        
+        #define new scan vector
+        scan_range = (ttscan_limits[0] + shift_limits[0] + bw_limits[0], 
+                      ttscan_limits[1] + shift_limits[1] + bw_limits[1])
+        
+        scan_values = np.linspace(scan_range[0],
+                                  scan_range[1],
+                                  int(np.ceil((scan_range[1]-scan_range[0])/ttscan_min_spacing))
+                                  )
+        
+        reflectivity = np.zeros(scan_values.shape)
+
+        #convolve the 1D TT-curve with the shifts via interpolation
+        x_tt = tt_solution['scan'].value
+        y_tt = tt_solution['reflectivity'] 
+        
+        for sh in shift_vector:
+            reflectivity += np.interp(scan_values, x_tt + sh, y_tt, left=0, right=0)
+
+        #normalize to the number of grid points, the solid angle, 
+        #and the non-masked fraction of the surface area 
+        reflectivity *= solid_angle*non_masked_frac/shift_vector.size
+
+        #Convolve with the incident bandwidth
+        if incident_bandwidth is not None:
+            temp_reflectivity = np.zeros(reflectivity.shape)
+
+            for i in range(x_bw.size):
+                temp_reflectivity += y_bw[i]*np.interp(scan_values, 
+                                                       scan_values + x_bw[i], 
+                                                       reflectivity, 
+                                                       left=0, 
+                                                       right=0)   
+
+            reflectivity = temp_reflectivity/y_bw.size
+
+        #Store the run into self.solution
+        self.solution = {}
+
+        #Store the final curve and its components mapped on the same scan vector
+        self.solution['scan'] = Quantity(scan_values,tt_units)        
+        self.solution['tt_curve'] = np.interp(scan_values,x_tt,y_tt, left=0, right=0)
+        
+        if incident_bandwidth is not None:
+            self.solution['incident_bw'] = np.interp(scan_values,x_bw,y_bw, left=0, right=0)
+        else:
+            self.solution['incident_bw'] = np.zeros(scan_values.shape)
+            
+        bin_edges = np.append(scan_values,
+                              [scan_values[-1]+scan_values[1]-scan_values[0]])
+        bin_edges -= 0.5*(scan_values[1]-scan_values[0])
+
+        self.solution['transverse_shifts'] = np.histogram(shift_vector, bin_edges)[0]
+        self.solution['total_curve'] = reflectivity
+
+        #store the tensor, mask and johann error functions
+        self.solution['stress_tensor'] = stress
+        self.solution['strain_tensor'] = strain
+        self.solution['mask'] = mask
+
+        if include_johann_error:
+            self.solution['johann_error'] = self.johann_error(tt_solver.solution['bragg_angle'], 
+                                                              shifts_grid.units(), length_unit = 'mm')
+        else:
+            self.solution['johann_error'] = None
+
+        self.solution['length_scale'] = 'mm'
+
+
+        return scan_values, reflectivity
+            
 
     def __str__(self):
 
