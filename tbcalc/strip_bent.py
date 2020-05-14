@@ -89,19 +89,19 @@ def strip_coordinates(diameter, strip_width, strip_orientation, center_strip, la
         
         next_center_v += strip_width
     
-    #Handle the lateral pieces separately
-    
-    lateral_bottom_v = next_center_v - 0.5*strip_width
+    #Handle the lateral pieces separately    
+    lateral_bottom_v = next_center_v - 0.5*strip_width #this is the position of the lateral strip edge closest to the center
 
+    #Calculate the width from the remaining uncovered surface
     strip_width = diameter/2 - lateral_bottom_v
     strip_length = 2*np.sqrt(diameter**2/4 - lateral_bottom_v**2)
 
-    next_center_v = lateral_bottom_v + 0.5*strip_width
+    next_center_v = lateral_bottom_v + 0.5*strip_width #center position of the lateral strip
 
     strips_uv.append((0,next_center_v,strip_length,strip_width))
     strips_uv.append((0,-next_center_v,strip_length,strip_width))
 
-    #Set orientation
+    #Set strip orientation
     if strip_orientation == 'meridional':
         strips = strips_uv
     else:
@@ -115,8 +115,25 @@ def combine_strips(strips, stresses, strains, c_forces, diameter):
     '''
     Combines the stress, strain, and contact force functions of individual
     strips.
-    '''
     
+    Parameters
+    ----------
+    strips : list of tuples
+        The coordinates and dimensions of strips as given by strip_coordinates()
+
+    stresses, strains : list of dicts of functions
+        Functions returning the stress and strain tensor components as function
+        of position for each individual strip.
+        
+    c_forces : list of functions
+        Contact force functions of individual strips
+
+    diameter : float
+        The diameter of the circular substrate concave.
+        
+    '''
+
+    #Define the stress tensor functions
     stress = {}
 
     def stress_ij(X,Y,ij):
@@ -127,6 +144,7 @@ def combine_strips(strips, stresses, strains, c_forces, diameter):
             temp = stresses[i][ij](X-strips[i][0],Y-strips[i][1])
             stress_sum[np.logical_not(np.isnan(temp))] = temp[np.logical_not(np.isnan(temp))]
 
+        #apply circular mask to cut out the edges
         stress_sum[X**2 + Y**2 > diameter**2/4] = np.nan
             
         return stress_sum
@@ -145,6 +163,7 @@ def combine_strips(strips, stresses, strains, c_forces, diameter):
     stress[21] = stress['yx']    
     stress[22] = stress['yy']
 
+    #Define the strain tensor functions
     strain = {}
 
     def strain_ij(X,Y,ij):
@@ -155,7 +174,8 @@ def combine_strips(strips, stresses, strains, c_forces, diameter):
         for i in range(len(strips)):
             temp = strains[i][ij](X-strips[i][0],Y-strips[i][1])
             strain_sum[np.logical_not(np.isnan(temp))] = temp[np.logical_not(np.isnan(temp))]
- 
+
+        #apply circular mask to cut out the edges
         strain_sum[X**2 + Y**2 > diameter**2/4] = np.nan           
  
         return strain_sum
@@ -184,6 +204,8 @@ def combine_strips(strips, stresses, strains, c_forces, diameter):
     strain[33] = strain['zz']
 
 
+    #Define the contact force function
+    
     def contact_force(X,Y):
        
         cforce_sum = np.empty(X.shape)
@@ -193,6 +215,7 @@ def combine_strips(strips, stresses, strains, c_forces, diameter):
             temp = c_forces[i](X-strips[i][0],Y-strips[i][1])
             cforce_sum[np.logical_not(np.isnan(temp))] = temp[np.logical_not(np.isnan(temp))]
 
+        #apply circular mask to cut out the edges
         cforce_sum[X**2 + Y**2 > diameter**2/4] = np.nan       
             
         return cforce_sum
@@ -202,6 +225,83 @@ def combine_strips(strips, stresses, strains, c_forces, diameter):
 
 def isotropic_strip_bent_deformation(Rx, Ry, diameter, strip_width, strip_orientation, 
                                      center_strip, lateral_strips, thickness, nu, E):
+    '''
+    Calculate the deformation field of a full strip-bent analyser assuming 
+    elastically isotropic crystal by approximating the strips with masked 
+    rectangular wafers.
+
+    Parameters
+    ----------
+    Rx, Ry : float
+        Meridional and sagittal bending radii        
+        
+    diameter : float
+        Diameter of the analyser.
+        
+    strip_width : float
+        Width of the crystal
+        
+    strip_orientation : 'meridional' or 'sagittal'
+        Orientation of the long edges of the strips
+        
+    center_strip : bool
+        True if the analyser has a center strip or False if the border between
+        two strips passes through the center.
+        
+    lateral_strips : 'wide' or 'narrow'
+        Whether the most lateral strips are narrow or wide compared to the other
+        strips.
+        
+    thickness : float
+        Thickness of the wafer.
+        
+    nu : float
+        Poisson's ratio
+        
+    E : float
+        Young's modulus. The inverse of the units determine the units of the 
+        returned stress tensor components.
+
+    For sensible output, the physical units of Rx, Ry, diameter, strip_width, 
+    and thickness have to be the same.
+
+
+    Returns
+    -------
+    stress : dict
+        Functions returning the transverse stress tensor components as a 
+        function of position on the crystal wafer surface. Can be indexed either 
+        with x,y or 1,2. For example, sigma_xy at x = X and y = Y is given by
+
+        stress['xy'](X, Y)
+        OR 
+        stress[12](X, Y)
+
+        Functions return nan for coordinates outside the wafer.
+
+        Units of the position are same as for inputs Rx, Ry, and L, and the 
+        unit of stress is that of E.
+
+    strain : dict
+        Functions returning the strain tensor components due to the transverse
+        stress as a function of position on the crystal wafer surface. Can be 
+        indexed either with x,y,z or 1,2,3. For example, epsilon_zz at x = X 
+        and y = Y is given by
+
+        strain['zz'](X, Y)
+        OR 
+        strain[33](X, Y)
+
+        Functions return nan for coordinates outside the wafer.
+
+        Units of the position are same as for inputs Rx, Ry, and L.
+
+    contact_force : function
+        Contact force between the wafer and the substrate per unit area as a
+        function of position i.e. contact_force(X, Y).
+
+    '''
+
     
     #Get the center positions and dimensions of the strips
     strips = strip_coordinates(diameter, strip_width, strip_orientation, center_strip, lateral_strips)
@@ -222,8 +322,83 @@ def isotropic_strip_bent_deformation(Rx, Ry, diameter, strip_width, strip_orient
     #Combine the single strip functions
     return combine_strips(strips, stresses, strains, c_forces, diameter)
 
+
 def anisotropic_strip_bent_deformation(Rx, Ry, diameter, strip_width, strip_orientation, 
                                        center_strip, lateral_strips, thickness, S):
+
+    '''
+    Calculate the deformation field of a full strip-bent analyser assuming 
+    elastically anisotropic crystal by approximating the strips with masked 
+    rectangular wafers.
+
+    Parameters
+    ----------
+    Rx, Ry : float
+        Meridional and sagittal bending radii      
+        
+    diameter : float
+        Diameter of the analyser.
+        
+    strip_width : float
+        Width of the crystal
+        
+    strip_orientation : 'meridional' or 'sagittal'
+        Orientation of the long edges of the strips
+        
+    center_strip : bool
+        True if the analyser has a center strip or False if the border between
+        two strips passes through the center.
+        
+    lateral_strips : 'wide' or 'narrow'
+        Whether the most lateral strips are narrow or wide compared to the other
+        strips.
+        
+    thickness : float
+        Thickness of the wafer.
+        
+    S : 6x6 Numpy array
+        Compliance matrix in the Voigt notation. The inverse of units determine
+        the units of the returned stress tensor components.
+
+    For sensible output, the physical units of Rx, Ry, diameter, strip_width, 
+    and thickness have to be the same.
+
+    Returns
+    -------
+    stress : dict
+        Functions returning the transverse stress tensor components as a 
+        function of position on the crystal wafer surface. Can be indexed either 
+        with x,y or 1,2. For example, sigma_xy at x = X and y = Y is given by
+
+        stress['xy'](X, Y)
+        OR 
+        stress[12](X, Y)
+
+        Functions return nan for coordinates outside the wafer.
+
+        Units of the position are same as for inputs Rx, Ry, and L, and the 
+        unit of stress is that of E.
+
+    strain : dict
+        Functions returning the strain tensor components due to the transverse
+        stress as a function of position on the crystal wafer surface. Can be 
+        indexed either with x,y,z or 1,2,3. For example, epsilon_zz at x = X 
+        and y = Y is given by
+
+        strain['zz'](X, Y)
+        OR 
+        strain[33](X, Y)
+
+        Functions return nan for coordinates outside the wafer.
+
+        Units of the position are same as for inputs Rx, Ry, and L.
+
+    contact_force : function
+        Contact force between the wafer and the substrate per unit area as a
+        function of position i.e. contact_force(X, Y).
+
+
+    '''
     
     #Get the center positions and dimensions of the strips
     strips = strip_coordinates(diameter, strip_width, strip_orientation, center_strip, lateral_strips)
