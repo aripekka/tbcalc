@@ -17,7 +17,8 @@ class Analyser:
         
         Circular analyser    : diameter
         Rectangular analyser : a, b
-        Strip-bent analyser  : diameter, strip_width, strip_orientation
+        Strip-bent analyser  : diameter, strip_width, strip_orientation,
+                               center_strip, lateral_strips 
 
     Any other combination of the parameters above (e.g. diameter and a) will 
     raise an error.
@@ -60,6 +61,17 @@ class Analyser:
     strip_orientation : str (strip_bent analysers, optional)
         Orientation of the strips. The direction of the cuts can be either
         'meridional' or 'sagittal'. If not given, defaults to 'meridional'.
+
+    center_strip : bool (strip_bent analysers, optional)
+        If True, the analyser has a strip going through the middle of the 
+        crystal (the center of this strip coincides with the center of the 
+        analyser). If False, then the center of the crystal is assumed to fall
+        between two strips. Defaults to True.
+    
+    lateral_strips : 'wide' or 'narrow' (strip_bent analysers, optional)
+        The strip width is not necessarily a multiple of the analyser diameter
+        which means that the most lateral strips have to be either wider ('wide')
+        or narrower ('narrow') than the rest of the strips. Defaults to 'wide'.
 
     asymmetry : pyTTE.Quantity of type angle (all analysers, optional)
         Clockwise-positive asymmetry angle wrapped in a Quantity instance.
@@ -173,8 +185,15 @@ class Analyser:
                 line = line.strip()
                 if len(line) > 0 and not line[0] == '#':  #skip empty and comment lines
                     ls = line.split() 
-                    if ls[0] == 'crystal' and len(ls) == 2:
-                        kwargs['crystal'] = ls[1]
+                    if ls[0] in ['crystal', 'lateral_strips'] and len(ls) == 2:
+                        kwargs[ls[0]] = ls[1]
+                    elif ls[0] == 'center_strip' and len(ls) == 2:
+                        if ls[1].lower() in ['true','1']:
+                            kwargs[ls[0]] = True
+                        elif ls[1].lower() in ['false','0']:
+                            kwargs[ls[0]] = False                       
+                        else:
+                            print('Skipped an invalid line in the file: ' + line)                                                 
                     elif ls[0] == 'hkl' and len(ls) == 4:
                         kwargs['hkl'] = [int(ls[1]),int(ls[2]),int(ls[3])]
                     elif ls[0] in ['Rx', 'Ry']:
@@ -283,6 +302,15 @@ class Analyser:
 
                 if self.geometry_info['strip_orientation'] not in ['meridional','sagittal']:
                     raise TypeError("strip_orientation has to be either 'meridional' or 'sagittal'!" )
+
+                self.geometry_info['center_strip'] = kwargs.get('center_strip', True)
+                if self.geometry_info['center_strip'] not in [True, False]:
+                    raise TypeError("center_strip has to be either True or False!" )
+                
+                self.geometry_info['lateral_strips'] = kwargs.get('center_strips', 'wide').lower()
+
+                if self.geometry_info['lateral_strips'] not in ['wide','narrow']:
+                    raise TypeError("lateral_strips has to be either 'wide' or 'narrow'!" )
 
                 self.geometry_info['wafer_shape'] = 'strip-bent'
 
