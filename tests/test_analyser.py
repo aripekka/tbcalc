@@ -71,6 +71,31 @@ def test_init():
                          'strip_width' : Quantity(15,'mm'),
                          },'strip-bent'])    
 
+    #strip-bent analyser
+    correct_input.append([{
+                         'crystal' : 'Si',
+                         'hkl' : [4,0,0],
+                         'thickness' : Quantity(150,'um'),
+                         'Rx' : Quantity(1,'m'),
+                         'Ry' : Quantity(0.5,'m'),
+                         'diameter' : Quantity(100,'mm'),
+                         'strip_width' : Quantity(15,'mm'),
+                         'center_strip': False,
+                         },'strip-bent'])    
+
+    #strip-bent analyser
+    correct_input.append([{
+                         'crystal' : 'Si',
+                         'hkl' : [4,0,0],
+                         'thickness' : Quantity(150,'um'),
+                         'Rx' : Quantity(1,'m'),
+                         'Ry' : Quantity(0.5,'m'),
+                         'diameter' : Quantity(100,'mm'),
+                         'strip_width' : Quantity(15,'mm'),
+                         'lateral_strips' : 'narrow',
+                         },'strip-bent'])    
+
+
     for ci in correct_input:
         ana = Analyser(**ci[0])
 
@@ -86,10 +111,13 @@ def test_init():
             assert ana.geometry_info['b'].value == ci[0]['b'].value            
 
         elif ci[1] == 'strip-bent':
-            assert set(ana.geometry_info) == {'wafer_shape','diameter','strip_width','strip_orientation'}        
+            assert set(ana.geometry_info) == {'wafer_shape','diameter','strip_width',
+                                              'strip_orientation','center_strip', 'lateral_strips'}        
             assert ana.geometry_info['diameter'].value == ci[0]['diameter'].value                
             assert ana.geometry_info['strip_width'].value == ci[0]['strip_width'].value    
-            assert ana.geometry_info['strip_orientation'] == ci[0].get('strip_orientation','meridional') 
+            assert ana.geometry_info['strip_orientation'] == ci[0].get('strip_orientation','meridional')
+            assert ana.geometry_info['center_strip'] == ci[0].get('center_strip',True)
+            assert ana.geometry_info['lateral_strips'] == ci[0].get('lateral_strips','wide')
 
     wrong_input = []
 
@@ -127,6 +155,42 @@ def test_init():
                          'R' : Quantity(0.5,'m'),                         
                          'diameter' : Quantity(100,'mm'),
                          })      
+
+    #strip-bent analyser
+    wrong_input.append([{
+                         'crystal' : 'Si',
+                         'hkl' : [4,0,0],
+                         'thickness' : Quantity(150,'um'),
+                         'Rx' : Quantity(1,'m'),
+                         'Ry' : Quantity(0.5,'m'),
+                         'diameter' : Quantity(100,'mm'),
+                         'strip_width' : Quantity(15,'mm'),
+                         'lateral_strips' : 'sdsd',
+                         },'strip-bent'])   
+
+    #strip-bent analyser
+    wrong_input.append([{
+                         'crystal' : 'Si',
+                         'hkl' : [4,0,0],
+                         'thickness' : Quantity(150,'um'),
+                         'Rx' : Quantity(1,'m'),
+                         'Ry' : Quantity(0.5,'m'),
+                         'diameter' : Quantity(100,'mm'),
+                         'strip_width' : Quantity(15,'mm'),
+                         'lateral_strips' : False,
+                         },'strip-bent'])   
+
+    #strip-bent analyser
+    wrong_input.append([{
+                         'crystal' : 'Si',
+                         'hkl' : [4,0,0],
+                         'thickness' : Quantity(150,'um'),
+                         'Rx' : Quantity(1,'m'),
+                         'Ry' : Quantity(0.5,'m'),
+                         'diameter' : Quantity(100,'mm'),
+                         'strip_width' : Quantity(15,'mm'),
+                         'center_strip' : 'scs',
+                         },'strip-bent'])   
 
     for wi in wrong_input:
         try:

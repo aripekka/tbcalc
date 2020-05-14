@@ -307,7 +307,7 @@ class Analyser:
                 if self.geometry_info['center_strip'] not in [True, False]:
                     raise TypeError("center_strip has to be either True or False!" )
                 
-                self.geometry_info['lateral_strips'] = kwargs.get('center_strips', 'wide').lower()
+                self.geometry_info['lateral_strips'] = kwargs.get('lateral_strips', 'wide').lower()
 
                 if self.geometry_info['lateral_strips'] not in ['wide','narrow']:
                     raise TypeError("lateral_strips has to be either 'wide' or 'narrow'!" )
