@@ -2,6 +2,7 @@
 from pyTTE import TakagiTaupin, Quantity, TTcrystal
 import tbcalc.transverse_deformation as transverse_deformation
 from .johann_error import johann_error
+from .strip_bent import isotropic_strip_bent_deformation, anisotropic_strip_bent_deformation
 
 import numpy as np
 
@@ -430,8 +431,29 @@ class Analyser:
                                                                       self.crystal_object.thickness.in_units(length_unit),
                                                                       self.crystal_object.S.in_units(pressure_unit+'^-1'))
             
-        elif self.geometry_info['wafer_shape'] == 'strip-bent':            
-            raise NotImplementedError('Strip-bent analyser is not yet implemented!')
+        elif self.geometry_info['wafer_shape'] == 'strip-bent':
+            if self.crystal_object.isotropy == 'isotropic':
+                return isotropic_strip_bent_deformation(self.crystal_object.Rx.in_units(length_unit),
+                                                        self.crystal_object.Ry.in_units(length_unit),
+                                                        self.geometry_info['diameter'].in_units(length_unit),
+                                                        self.geometry_info['strip_width'].in_units(length_unit),
+                                                        self.geometry_info['strip_orientation'],
+                                                        self.geometry_info['center_strip'],
+                                                        self.geometry_info['lateral_strips'],
+                                                        self.crystal_object.thickness.in_units(length_unit),
+                                                        self.crystal_object.nu,
+                                                        self.crystal_object.E.in_units(pressure_unit))
+
+            else:
+                return anisotropic_strip_bent_deformation(self.crystal_object.Rx.in_units(length_unit),
+                                                          self.crystal_object.Ry.in_units(length_unit),
+                                                          self.geometry_info['diameter'].in_units(length_unit),
+                                                          self.geometry_info['strip_width'].in_units(length_unit),
+                                                          self.geometry_info['strip_orientation'],
+                                                          self.geometry_info['center_strip'],
+                                                          self.geometry_info['lateral_strips'],
+                                                          self.crystal_object.thickness.in_units(length_unit),
+                                                          self.crystal_object.S.in_units(pressure_unit+'^-1'))
         else:
             raise NotImplementedError('Custom wafer shapes are not supported yet!')
 
