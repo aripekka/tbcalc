@@ -239,6 +239,14 @@ class Analyser:
         #Check the crystal inputs and initialize TTcrystal instance#
         ############################################################
         
+        #Check that all keywords are valid
+        for k in kwargs:
+            if k not in ['crystal', 'hkl', 'thickness', 'Rx','Ry','R','diameter',
+                         'a','b','strip_width','strip_orientation','center_strip',
+                         'lateral_strips','asymmetry','in_plane_rotation',
+                         'debye_waller','S','E','nu']:
+                raise KeyError('Invalid keyword argument: ' + k)
+        
         try:
             for k in ['crystal','hkl','thickness']:
                 kwargs_ttcrystal[k] = kwargs[k]

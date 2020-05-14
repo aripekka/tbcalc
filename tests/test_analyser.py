@@ -192,6 +192,16 @@ def test_init():
                          'center_strip' : 'scs',
                          },'strip-bent'])   
 
+    wrong_input.append([{
+                     'crystal' : 'Si',
+                     'hkl' : [4,0,0],
+                     'thidckness' : Quantity(150,'um'),
+                     'Rx' : Quantity(1,'m'),
+                     'Ry' : Quantity(0.5,'m'),
+                     'diameter' : Quantity(100,'mm'),
+                     'strip_width' : Quantity(15,'mm'),
+                     },'strip-bent'])   
+
     for wi in wrong_input:
         try:
             ana = Analyser(**wi)
