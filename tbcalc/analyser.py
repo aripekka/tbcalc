@@ -846,13 +846,15 @@ class Analyser:
                               [scan_values[-1]+scan_values[1]-scan_values[0]])
         bin_edges -= 0.5*(scan_values[1]-scan_values[0])
 
-        self.solution['transverse_shifts'] = np.histogram(shift_vector, bin_edges)[0]
+        self.solution['shift_curve'] = np.histogram(shift_vector, bin_edges)[0]
         self.solution['total_curve'] = reflectivity
 
         #store the tensor, mask and johann error functions
         self.solution['stress_tensor'] = stress
         self.solution['strain_tensor'] = strain
-        self.solution['mask'] = mask
+        self.solution['mask'] = mask        
+        self.solution['contact_force'] = contact_force      
+        self.solution['transverse_strain_shifts'] = shifts
 
         if include_johann_error:
             self.solution['johann_error'] = self.johann_error(tt_solver.solution['bragg_angle'], 
@@ -901,7 +903,7 @@ class Analyser:
         data.append(self.solution['scan'].value.reshape(-1))
         data.append(self.solution['total_curve'].reshape(-1))
         data.append(self.solution['tt_curve'].reshape(-1))
-        data.append(self.solution['transverse_shifts'].reshape(-1))
+        data.append(self.solution['shift_curve'].reshape(-1))
         data.append(self.solution['incident_bw'].reshape(-1))
 
         data = np.array(data).T
