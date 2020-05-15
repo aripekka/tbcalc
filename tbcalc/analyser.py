@@ -862,8 +862,70 @@ class Analyser:
 
         self.solution['length_scale'] = 'mm'
 
+        #Add metadata
+        self.solution['analyser_info'] = str(self)
+        self.solution['mask_info'] = str(mask)
+        self.solution['included_johann_error'] = str(include_johann_error)        
+        self.solution['scan_info'] = str(scan)
+        self.solution['tt_solver_output'] = tt_solution['solver_output_log']
 
         return scan_values, reflectivity
+
+    def save(self, path, include_header = True):
+        '''
+        Saves the solution in to a file.
+        
+        Parameters
+        ----------
+        
+        path : str
+            Path of the save file
+            
+        include_header : bool, optional
+            Determines if the metadata is included in the header. The default 
+            is True.
+
+        Returns
+        -------
+        
+        None.
+
+        '''
+
+        if self.solution is None:
+            print('No calculated solution found! Call run() first!')
+            return
+
+        #Build the data matrix
+        data = []
+        data.append(self.solution['scan'].value.reshape(-1))
+        data.append(self.solution['total_curve'].reshape(-1))
+        data.append(self.solution['tt_curve'].reshape(-1))
+        data.append(self.solution['transverse_shifts'].reshape(-1))
+        data.append(self.solution['incident_bw'].reshape(-1))
+
+        data = np.array(data).T
+
+        if include_header:
+            header = self.solution['analyser_info']
+            header = header + '\n\n' + 'Mask function     : ' + self.solution['mask_info']
+            header = header + '\n'   + 'With Johann error : ' + self.solution['included_johann_error'] + '\n\n'
+            header = header + 'SCAN INFO\n---------\n\n' + self.solution['scan_info']
+            
+            header = header  + '\n' + 'SOLVER OUTPUT LOG\n'\
+                     + '-----------------\n' + self.solution['tt_solver_output'] + '\n'
+
+            header = header + 'SOLUTION\n' + '--------\n' 
+            header = header + 'Scan (' + self.solution['scan'].units() + '), '
+
+            header =  header + 'Total reflectivity, '                
+            header =  header + '1D Takagi-Taupin curve, '                
+            header =  header + 'Transverse shifts, '                
+            header =  header + 'Incident bandwidth'
+        else:
+            header = ''
+
+        np.savetxt(path, data, header=header)
             
 
     def __str__(self):
