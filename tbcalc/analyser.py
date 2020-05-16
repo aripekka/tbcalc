@@ -5,6 +5,7 @@ from .johann_error import johann_error
 from .strip_bent import isotropic_strip_bent_deformation, anisotropic_strip_bent_deformation
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 class Analyser:
     '''
@@ -850,17 +851,17 @@ class Analyser:
         self.solution['total_curve'] = reflectivity
 
         #store the tensor, mask and johann error functions
-        self.solution['stress_tensor'] = stress
-        self.solution['strain_tensor'] = strain
-        self.solution['mask'] = mask        
-        self.solution['contact_force'] = contact_force      
-        self.solution['transverse_strain_shifts'] = shifts
+        self.solution['stress_functions'] = stress
+        self.solution['strain_functions'] = strain
+        self.solution['mask_function'] = mask        
+        self.solution['contact_force_function'] = contact_force      
+        self.solution['shift_function'] = shifts
 
         if include_johann_error:
-            self.solution['johann_error'] = self.johann_error(tt_solver.solution['bragg_angle'], 
+            self.solution['johann_error_function'] = self.johann_error(tt_solver.solution['bragg_angle'], 
                                                               shifts_grid.units(), length_unit = 'mm')
         else:
-            self.solution['johann_error'] = None
+            self.solution['johann_error_function'] = None
 
         self.solution['length_scale'] = 'mm'
 
@@ -873,6 +874,243 @@ class Analyser:
 
         return scan_values, reflectivity
 
+    def plot(self, select_plot = 'all'):
+        '''
+        Plots the calculated solution.
+
+        Parameters
+        ----------
+
+        select_plot : str
+            Selects which ones of the available plots are plotted. Options are:
+
+            'all'           - Plots all available plots
+            'curves'        - The calculated analyser reflectivity curve, 1D Takagi-
+                              Taupin curve, transverse shift curve (stretching + 
+                              Johann error), and the incident bandwidth curve
+            'stress'        - Plots the Cartesian stress tensor components as a
+                              function of surface position
+            'strain'        - Plots the Cartesian strain tensor components as a
+                              function of surface position
+            'mask'          - Shows the masked and non-masked area of the surface
+            'johann_error'  - Plots the Johann error as a function of surface
+                              position
+            'shifts'        - Plots the diffraction energy or angle shifts due
+                              the transverse stretching (without Johann error)
+            'contact_force' - The contact force per unit area at the wafer-
+                              substrate interface as a function of position
+
+        '''
+
+        if self.solution is None:
+            print('No calculated solution found! Call run() first!')
+            return
+
+
+        #Define grid for plotting
+        if self.geometry_info['wafer_shape'] in ['circular', 'strip-bent']:            
+            L = self.geometry_info['diameter'].in_units('mm')
+            x = np.linspace(-L/2, L/2, 200)
+            X,Y = np.meshgrid(x,x)
+        else:
+            a = self.geometry_info['a'].in_units('mm')
+            b = self.geometry_info['b'].in_units('mm')
+                        
+            x = np.linspace(-a/2, a/2, 200)
+            y = np.linspace(-b/2, b/2, 200)
+
+            X,Y = np.meshgrid(x,y) 
+
+
+        if select_plot.lower() in ['curves','all']:
+            fig, ax = plt.subplots(2, 2)
+
+            ax[0,0].plot(self.solution['scan'].value, self.solution['total_curve'])
+            ax[0,0].set_xlabel('Scan ('+ self.solution['scan'].units() +')')
+            ax[0,0].set_ylabel('Reflectivity')
+            ax[0,0].set_title('Full analyser curve')
+
+            ax[0,1].plot(self.solution['scan'].value, self.solution['tt_curve'])
+            ax[0,1].set_xlabel('Scan ('+ self.solution['scan'].units() +')')
+            ax[0,1].set_ylabel('Reflectivity')
+            ax[0,1].set_title('1D Takagi-Taupin curve')
+
+            
+            #Apply smoothing to the histogram
+            x_smooth = 0.25*(self.solution['scan'].value[:-3:4]  +
+                             self.solution['scan'].value[1:-2:4] +
+                             self.solution['scan'].value[2:-1:4] +
+                             self.solution['scan'].value[3::4])
+
+            y_smooth = 0.25*(self.solution['shift_curve'][:-3:4]  +
+                             self.solution['shift_curve'][1:-2:4] +
+                             self.solution['shift_curve'][2:-1:4] +
+                             self.solution['shift_curve'][3::4])
+
+            ax[1,0].plot(x_smooth, y_smooth)
+            ax[1,0].set_xlabel('Scan ('+ self.solution['scan'].units() +')')
+            ax[1,0].set_ylabel('Density (arb. units.)')
+            ax[1,0].set_title('Transverse shift distribution')
+
+            ax[1,1].plot(self.solution['scan'].value, self.solution['incident_bw'])
+            ax[1,1].set_xlabel('Scan ('+ self.solution['scan'].units() +')')
+            ax[1,1].set_ylabel('Intensity')
+            ax[1,1].set_title('Incident bandwidth')
+
+            fig.tight_layout()
+
+        if select_plot.lower() in ['stress','all']:
+
+            fig, ax = plt.subplots(1, 3)
+
+            #Calculate stresses and the colormap ranges
+            Z = {}
+
+            for i in ['xx','yy','xy']:
+                Z[i] = self.solution['stress_functions'][i](X,Y)
+                
+                if i == 'xx':
+                    vmin = np.nanmin(Z[i])
+                    vmax = np.nanmax(Z[i])
+                else:
+                    if np.nanmin(Z[i]) < vmin:
+                        vmin = np.nanmin(Z[i])
+                    if np.nanmax(Z[i]) > vmax:
+                        vmax = np.nanmax(Z[i])
+
+            ax[0].pcolormesh(X,Y,Z['xx'],cmap='jet',vmin=vmin,vmax=vmax)
+            ax[0].set_ylabel('Sagittal position (mm)')
+            ax[0].set_title('$\sigma_{xx}$')
+            ax[0].set_aspect('equal', 'box')
+
+            ax[1].pcolormesh(X,Y,Z['xy'],cmap='jet',vmin=vmin,vmax=vmax)
+            ax[1].set_xlabel('Meridional position (mm)')
+            ax[1].set_title('$\sigma_{xy}$')
+            ax[1].set_aspect('equal', 'box')
+            
+            pcm = ax[2].pcolormesh(X,Y,Z['yy'],cmap='jet',vmin=vmin,vmax=vmax)
+            ax[2].set_title('$\sigma_{yy}$')
+            ax[2].set_aspect('equal', 'box')
+
+            fig.tight_layout()
+            fig.colorbar(pcm, ax=ax[:], location = 'bottom').set_label('Stress (GPa)')
+
+
+        if select_plot.lower() in ['strain','all']:
+
+            fig, ax = plt.subplots(2, 3)
+
+            #Calculate strains and the colormap ranges
+            Z = {}
+
+            for i in ['xx','yy','xy','xz','yz','zz']:
+                Z[i] = self.solution['strain_functions'][i](X,Y)
+                
+                if i == 'xx':
+                    vmin = np.nanmin(Z[i])
+                    vmax = np.nanmax(Z[i])
+                else:
+                    if np.nanmin(Z[i]) < vmin:
+                        vmin = np.nanmin(Z[i])
+                    if np.nanmax(Z[i]) > vmax:
+                        vmax = np.nanmax(Z[i])
+
+            ax[0,0].pcolormesh(X,Y,Z['xx'],cmap='jet',vmin=vmin,vmax=vmax)
+            ax[0,0].set_ylabel('Sagittal position (mm)')
+            ax[0,0].set_title('$u_{xx}$')
+            ax[0,0].set_aspect('equal', 'box')
+
+            ax[0,1].pcolormesh(X,Y,Z['xy'],cmap='jet',vmin=vmin,vmax=vmax)
+            ax[0,1].set_title('$u_{xy}$')
+            ax[0,1].set_aspect('equal', 'box')
+            
+            ax[0,2].pcolormesh(X,Y,Z['yy'],cmap='jet',vmin=vmin,vmax=vmax)
+            ax[0,2].set_title('$u_{yy}$')
+            ax[0,2].set_aspect('equal', 'box')
+
+            ax[1,0].pcolormesh(X,Y,Z['xz'],cmap='jet',vmin=vmin,vmax=vmax)
+            ax[1,0].set_ylabel('Sagittal position (mm)')
+            ax[1,0].set_title('$u_{xz}$')
+            ax[1,0].set_aspect('equal', 'box')
+
+            ax[1,1].pcolormesh(X,Y,Z['yz'],cmap='jet',vmin=vmin,vmax=vmax)
+            ax[1,1].set_xlabel('Meridional position (mm)')
+            ax[1,1].set_title('$u_{yz}$')
+            ax[1,1].set_aspect('equal', 'box')
+            
+            pcm = ax[1,2].pcolormesh(X,Y,Z['zz'],cmap='jet',vmin=vmin,vmax=vmax)
+            ax[1,2].set_title('$u_{zz}$')
+            ax[1,2].set_aspect('equal', 'box')
+
+            fig.tight_layout()
+            fig.colorbar(pcm, ax=ax[:], location = 'bottom').set_label('Strain')
+
+        if select_plot.lower() in ['mask','all']:
+
+            fig, ax = plt.subplots(1, 1)
+            Z = np.ones(X.shape)
+            
+            if self.solution['mask_function'] is not None:
+                Z[np.logical_not(self.solution['mask_function'](X,Y))] = 0
+
+            ax.pcolormesh(X,Y,Z,cmap='inferno',vmin=0,vmax=2)
+
+            ax.set_xlabel('Meridional position (mm)')
+            ax.set_ylabel('Sagittal position (mm)')
+            ax.set_title('Mask (black = masked, magenta = not masked)')
+            ax.set_aspect('equal', 'box')
+
+        if select_plot.lower() in ['johann_error','all']:
+
+            fig, ax = plt.subplots(1, 1)
+            Z = np.zeros(X.shape)
+            
+            if self.solution['johann_error_function'] is not None:
+                Z = self.solution['johann_error_function'](X,Y).in_units(self.solution['scan'].units())
+                Z[np.isnan(self.solution['strain_functions']['xx'](X,Y))] = np.nan
+
+            pcm = ax.pcolormesh(X,Y,Z,cmap='jet')
+
+            ax.set_xlabel('Meridional position (mm)')
+            ax.set_ylabel('Sagittal position (mm)')
+            ax.set_title('Johann error')
+            ax.set_aspect('equal', 'box')
+            fig.colorbar(pcm,ax=ax).set_label(self.solution['scan'].units())
+                        
+        plt.show()
+
+        if select_plot.lower() in ['shifts','all']:
+
+            fig, ax = plt.subplots(1, 1)
+
+            Z = self.solution['shift_function'](X,Y).in_units(self.solution['scan'].units())
+
+            pcm = ax.pcolormesh(X,Y,Z,cmap='jet')
+
+            ax.set_xlabel('Meridional position (mm)')
+            ax.set_ylabel('Sagittal position (mm)')
+            ax.set_title('Diffraction curve shifts due to transverse\nstretching (without Johann error)')
+            ax.set_aspect('equal', 'box')
+            fig.colorbar(pcm,ax=ax).set_label(self.solution['scan'].units())
+                        
+        plt.show()
+
+        if select_plot.lower() in ['contact_force','all']:
+
+            fig, ax = plt.subplots(1, 1)
+
+            Z = self.solution['contact_force_function'](X,Y)
+
+            pcm = ax.pcolormesh(X,Y,Z,cmap='jet')
+
+            ax.set_xlabel('Meridional position (mm)')
+            ax.set_ylabel('Sagittal position (mm)')
+            ax.set_title('Contact force per unit area\nbetween the wafer and substrate')
+            ax.set_aspect('equal', 'box')
+            fig.colorbar(pcm,ax=ax).set_label('GPa')
+                        
+        plt.show()
+        
     def save(self, path, include_header = True):
         '''
         Saves the solution to a file.
