@@ -1,0 +1,224 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage[left=2cm,right=2cm,top=3cm,bottom=4cm]{geometry}
+\usepackage{amsmath}
+\usepackage{mathtools}
+\usepackage{cases}
+\usepackage{hyperref}
+
+
+\author{Ari-Pekka Honkanen}
+\title{TBCALC: The Technical Document\\Version 1.0}
+\begin{document}
+\maketitle
+\section{Introduction}
+This documentation describes briefly the technical details and theoretical basis of $\textsc{tbcalc}$ package used to calculate the X-ray diffraction curves of toroidally bent, Johann-type crystal analysers. For comprehensive explanation, please refer to \cite{honkanen2020}.
+
+\section{Calculation of the reflectivity curves}
+As formally shown \cite{Honkanen_2016}, the effect of a constant component in a strain field to the diffraction curve can be taken into account by a applying a shift, either in energy or angle domain, to the Takagi-Taupin curve calculated without it. Since for toroidally bent crystal analysers the total strain field can be divided into a sum of depth-dependent and transversally varying parts, this allows efficient calculation of the reflectivity curves even for very large wafers. The calculation is summed up in the following steps:
+\begin{itemize}
+\item Compute the 1D Takagi-Taupin curve for the depth-dependent component of the strain field. \textsc{tbcalc} uses another Python package \textsc{pyTTE} for this.
+\item Calculate distribution the energy or angle shifts due to the transversally varying component. The Johann error can be included in this part.
+\item Convolve the 1D TT-curve with the shift distribution to obtain the full reflectivity curve of the analyser.
+\item Convolve the result with the incident bandwidth, if needed.
+\end{itemize}
+
+\subsection{Depth-dependent Takagi-Taupin curve}
+The 1D TT-curve is calculated using \textsc{PyTTE}. In v. 1.0 of \textsc{tbcalc} it is assumed that the main axes of curvature of TBCA:s are along the meridional and sagittal directions with respect to the diffraction plane and coincide, respectively, with the $x$- and $y$-axes of the Cartesian system used in the code and the manuscript \cite{honkanen2020}. By default, the internal anisotropic compliance matrices\footnote{Values from CRC Handbook of Chemistry and Physics, 82nd edition (2001)} are used for elastic parameters and \textsc{xraylib}\footnote{\url{https://github.com/tschoonj/xraylib}} for crystallograpic parameters and structure factors.
+
+\subsection{Transverse stress and strain tensor fields \label{sec:deformations}}
+For convenience, this section lists the equations for the transverse stress tensor and the strain it causes. Refer to \cite{honkanen2020} for the derivation and discussion.
+\subsubsection{Isotropic circular}
+The components of the transverse stress tensor of an isotropic circular wafer with the diameter $L$ and meridional and sagittal bending radii $R_1$ and $R_2$, respectively, are
+\begin{equation}
+\sigma_{xx} =  \frac{E}{16 R_1 R_2}\left( \frac{L^2}{4} - x^2 - 3 y^2 \right) \qquad
+\sigma_{xy} = \frac{E}{8 R_1 R_2}x y \qquad
+\sigma_{yy} =  \frac{E}{16 R_1 R_2}\left(\frac{L^2}{4} - 3 x^2 - y^2\right)
+\end{equation}
+the corresponding strain tensor components
+\begin{gather}
+u_{xx} = \frac{1}{16 R_1 R_2}\left[(1-\nu)\frac{L^2}{4} - (1-3\nu)x^2 - (3-\nu)y^2 \right] \\
+u_{yy} = \frac{1}{16 R_1 R_2}\left[(1-\nu)\frac{L^2}{4} - (1-3\nu)y^2 - (3-\nu)x^2 \right] \\
+u_{xy} = \frac{1+\nu}{8 R_1 R_2}x y \qquad u_{xz} = u_{yz} = 0 \qquad
+u_{zz} = \frac{\nu}{4 R_1 R_2}\left(x^2 + y^2 -\frac{L^2}{8} \right)
+\end{gather}
+and the contact force per unit area
+\begin{equation}
+P = \frac{E d}{16 R_1^2 R_2^2} \left[ 
+\left(3 R_1 + R_2 \right) x^2
++ \left(R_1 + 3 R_2 \right) y^2
+- \left(R_1 + R_2 \right)\frac{L^2}{4}
+\right].
+\end{equation}
+\subsubsection{Anisotropic circular}
+The stretching stress tensor components are 
+\begin{equation}
+\sigma_{xx} =  \frac{E'}{16 R_1 R_2}\left( \frac{L^2}{4} - x^2 - 3 y^2 \right) \quad 
+\sigma_{yy} =  \frac{E'}{16 R_1 R_2}\left(\frac{L^2}{4} - 3 x^2 - y^2\right) \quad
+\sigma_{xy} = \frac{E'}{8 R_1 R_2}x y
+\end{equation}
+where 
+\begin{equation}
+E' = \frac{8}{3(S_{11}+S_{22})+2 S_{12}+S_{66}},
+\end{equation}
+the corresponding strain tensor 
+\begin{align}
+u_{xx} &= \frac{E'}{16 R_1 R_2} \left[ (S_{11}+S_{12})\frac{L^2}{4} - (S_{11} + 3 S_{12}) x^2  -(3 S_{11} + S_{12}) y^2 + 2 S_{16} xy \right] \\
+u_{yy} &= \frac{E'}{16 R_1 R_2} \left[ (S_{21}+S_{22})\frac{L^2}{4} - (S_{21} + 3 S_{22}) x^2  -(3 S_{21} + S_{22}) y^2 + 2 S_{26} xy \right] \\
+u_{zz} &= \frac{E'}{16 R_1 R_2} \left[ (S_{31}+S_{32})\frac{L^2}{4} - (S_{31} + 3 S_{32}) x^2  -(3 S_{31} + S_{32}) y^2 + 2 S_{36} xy \right] \\
+u_{xz} &= \frac{E'}{32 R_1 R_2} \left[ (S_{41}+S_{42})\frac{L^2}{4} - (S_{41} + 3 S_{42}) x^2  -(3 S_{41} + S_{42}) y^2 + 2 S_{46} xy \right] \\
+u_{yz} &= \frac{E'}{32 R_1 R_2} \left[ (S_{51}+S_{52})\frac{L^2}{4} - (S_{51} + 3 S_{52}) x^2  -(3 S_{51} + S_{52}) y^2 + 2 S_{56} xy \right] \\
+u_{xy} &= \frac{E'}{32 R_1 R_2} \left[ (S_{61}+S_{62})\frac{L^2}{4} - (S_{61} + 3 S_{62}) x^2  -(3 S_{61} + S_{62}) y^2 + 2 S_{66} xy \right]
+\end{align}
+and the contact force per unit area
+\begin{equation}
+P = \frac{E' d}{16 R_1^2 R_2^2} \left[ 
+\left(3 R_1 + R_2 \right) x^2
++ \left(R_1 + 3 R_2 \right) y^2
+- \left(R_1 + R_2 \right)\frac{L^2}{4}
+\right].
+\end{equation}
+
+\subsubsection{Isotropic rectangular}
+The components of the transverse stress tensor of an isotropic rectangular wafer with the side lengths $a$ and $b$ aligned with the meridional and sagittal radii of curvature $R_1$ and $R_2$, respectively, are
+\begin{align}
+\sigma_{xx} &= \frac{E}{g R_1 R_2}\left[\frac{a^2}{12}- x^2 +\left(\frac{1+\nu}{2}+5\frac{ a^2}{b^2} +\frac{1-\nu}{2} \frac{a^4}{b^4}\right)\left(\frac{b^2}{12}-y^2 \right)\right]  \\
+\sigma_{yy} &= \frac{E}{g R_1 R_2}\left[\frac{b^2}{12}- y^2 +\left(\frac{1+\nu}{2} +5\frac{ b^2}{a^2} +\frac{1-\nu}{2} \frac{b^4}{a^4}\right)\left(\frac{a^2}{12}-x^2 \right)\right]  \\
+\sigma_{xy} &= \frac{2 E}{g R_1 R_2}xy, 
+\end{align}
+where
+\begin{equation}
+g = 8+10 \left(\frac{a^2}{b^2} + \frac{b^2}{a^2}\right) + (1-\nu)\left(\frac{a^2}{b^2} - \frac{b^2}{a^2}\right)^2.
+\end{equation}
+The stretching strain tensor components are
+\begin{equation}
+u_{xx} = \frac{\sigma_{xx}-\nu \sigma_{yy}}{E} \quad u_{yy} = \frac{\sigma_{yy}-\nu \sigma_{xx}}{E} \quad u_{xy} = \frac{1+\nu}{E}\sigma_{xy} \quad u_{xz}=u_{yz}=0 \quad  u_{zz} = -\frac{\nu}{E}(\sigma_{xx}+\sigma_{yy})
+\end{equation}
+and the contact force
+\begin{align}
+P = - \frac{Ed}{gR_1^2R_2^2}\Bigg[
+&\left( R_1 \left(\frac{1+\nu}{2} +5\frac{ b^2}{a^2} +\frac{1-\nu}{2} \frac{b^4}{a^4}\right) + R_2\right)\left(\frac{a^2}{12}-x^2 \right) \nonumber \\ +
+&\left( R_2 \left(\frac{1+\nu}{2}+5\frac{ a^2}{b^2} +\frac{1-\nu}{2} \frac{a^4}{b^4}\right)
++ R_1 \right)\left(\frac{b^2}{12}-y^2 \right) \Bigg]
+\end{align}
+
+\subsubsection{Anisotropic rectangular}
+For an anisotropic rectangular wafer, the transverse stress tensor components are
+\begin{align}
+\sigma_{xx} &= C_{02} + 12 C_{22}x^2 + 24 C_{13} xy + 12 C_{04} y^2 \\
+\sigma_{yy} &= C_{20} + 12 C_{22}y^2 + 24 C_{31} xy + 12 C_{40} x^2 \\
+\sigma_{xy} &= -C_{11}  - 12 C_{31} x^2 - 24 C_{22} xy - 12 C_{13} y^2 
+\end{align}
+from which we can calculate the corresponding strain tensor
+\begin{align}
+u_{xx} &= S_{11} \sigma_{xx} + S_{12} \sigma_{yy} + S_{16} \sigma_{xy} \\
+u_{yy} &= S_{21} \sigma_{xx} + S_{22} \sigma_{yy} + S_{26} \sigma_{xy} \\
+u_{xy} &= \frac{1}{2}\left(S_{61}\sigma_{xx} + S_{62} \sigma_{yy} + S_{66} \sigma_{xy} \right) \\
+u_{xz} &= \frac{1}{2}\left(S_{41}\sigma_{xx} + S_{42} \sigma_{yy} + S_{46} \sigma_{xy} \right) \\
+u_{yz} &= \frac{1}{2}\left(S_{51}\sigma_{xx} + S_{52} \sigma_{yy} + S_{56} \sigma_{xy} \right)  \\
+u_{zz} &= S_{31} \sigma_{xx} + S_{32} \sigma_{yy} + S_{36} \sigma_{xy}
+\end{align}
+and the contact force per surface area
+\begin{equation}
+P = -d \left(\frac{\sigma_{xx}}{R_1} + \frac{\sigma_{yy}}{R_2} \right).
+\end{equation}
+The coefficients $C_{ij}$ are obtained by solving the matrix equation $\Lambda  \mathbf{C} = \mathbf{b}$ in terms of $\mathbf{C}$ where
+\begin{equation}
+\mathbf{C} = \left[ \begin{matrix}
+C_{11} & C_{20} & C_{02} & C_{22} & C_{31} & C_{13} & C_{40} & C_{04} & \lambda_1
+\end{matrix}
+\right]^{\mathrm{T}},
+\end{equation}
+\begin{equation}
+\mathbf{b} = \left[ \begin{matrix}
+0 & 0 & 0 & 0 & 0 &0 &0 & 0 & -(24 R_1 R_2)^{-1}
+\end{matrix}
+\right]^{\mathrm{T}},
+\end{equation}
+and
+\begin{equation}
+\Lambda = \left[
+\begin{matrix}
+ S_{66} & -S_{26} & -S_{16} & \Lambda_{14} & S_{66} a^2 & S_{66} b^2 & -S_{26} a^2 & -S_{16} b^2 & 0 \\
+-S_{26} & S_{22} & S_{12} & \Lambda_{24}  & - S_{26} a^2 & -S_{26} b^2 & S_{22} a^2 & S_{12} b^2 & 0 \\
+-S_{16} & S_{12} & S_{11} & \Lambda_{34} & - S_{16} a^2 & -S_{16} b^2 & S_{12} a^2 & S_{11} b^2 & 0 \\
+ \Lambda_{41} & \Lambda_{42} & \Lambda_{43} & \Lambda_{44} & \Lambda_{45} & \Lambda_{46} & \Lambda_{47} & \Lambda_{48} & \Lambda_{49} \\
+5 S_{66} a^2 & -5 S_{26} a^2 & -5 S_{16} a^2 & \Lambda_{54} & \Lambda_{55} & \Lambda_{56} & -9 S_{26} a^4 & -5 S_{16} a^2 b^2 & - 2 S_{26} \\
+5 S_{66} b^2 & -5 S_{26} b^2 & -5 S_{16} b^2 & \Lambda_{64} & \Lambda_{65} & \Lambda_{66} & -5 S_{26} a^2 b^2 & -9 S_{16} b^4 & - 2 S_{16} \\
+-5 S_{26} a^2 & 5 S_{22} a^2 & 5 S_{12} a^2 & \Lambda_{74} & -9 S_{26} a^4 & -5 S_{26} a^2 b^2 & 9 S_{22} a^4 & 5 S_{12} a^2 b^2 & S_{22} \\
+-5 S_{16} b^2 & 5 S_{12} b^2 & 5 S_{11} b^2 & \Lambda_{84} & -5 S_{16} a^2 b^2 & -9 S_{16} b^4 & 5 S_{12} a^2 b^2 & 9 S_{11} b^4 & S_{11} \\
+0 & 0 & 0 & \Lambda_{94} & -2 S_{26} & -2 S_{16} & S_{22} & S_{11} & 0
+\end{matrix}
+\right]
+\end{equation}
+with
+\begin{align}
+\Lambda_{14} &= -S_{16} a^2 -S_{26}b^2 & \Lambda_{24} &= S_{12}a^2 + S_{22}b^2 \nonumber  \\
+\Lambda_{34} &= S_{11}a^2 + S_{12}b^2 & \Lambda_{41} &= -5 S_{16}a^2 - 5 S_{26}b^2 \nonumber  \\
+\Lambda_{42} &= 5 S_{12}a^2 + 5 S_{22}b^2 & \Lambda_{43} &= 5 S_{11}a^2 + 5 S_{12}b^2 \nonumber \\
+\Lambda_{44} &= 9 S_{11} a^4 + 9 S_{22} b^4 + 10 (S_{12}+2 S_{66})a^2 b^2 & 
+\Lambda_{45} &= -9 S_{16} a^4 -25 S_{26} a^2 b^2 \nonumber  \\
+\Lambda_{46} &= -25 S_{16}a^2b^2 -9 S_{26} b^4 & \Lambda_{47} &= 9 S_{12} a^4 + 5 S_{22} a^2 b^2 \nonumber \\
+\Lambda_{48} &= 5 S_{11} a^2 b^2 + 9 S_{12} b^4 & \Lambda_{49} &= 2 S_{12} + S_{66} \nonumber \\
+\Lambda_{54} &= -9 S_{16} a^4 -25 S_{26} a^2 b^2 & \Lambda_{55} &= 9 S_{66} a^4 + 20 S_{22} a^2 b^2 \nonumber \\
+\Lambda_{56} &= 5(4 S_{12} + S_{66} ) a^2 b^2 & \Lambda_{64} &=  -25 S_{16} a^2 b^2 -9 S_{26} b^4 \nonumber  \\
+\Lambda_{65} &= 5(4 S_{12} + S_{66}) a^2 b^2 & \Lambda_{66} &= 20 S_{11} a^2 b^2 + 9 S_{66} b^4 \nonumber \\
+\Lambda_{74} &= 9 S_{12} a^4 + 5 S_{22} a^2 b^2 & \Lambda_{84} &= 5 S_{11} a^2 b^2 + 9 S_{12} b^4 \nonumber \\
+\Lambda_{94} &=  2 S_{12} + S_{66} & & \nonumber 
+\end{align}
+
+\subsubsection{Tensors in cylindrical coordinates}
+Internally \textsc{tbcalc} performs the computations in the Cartesian coordinates $(x,y,z)$ but especially with the circular analysers expressing the strain and stress tensors in the cylindrical system $(r,\phi,z)$ can be useful. The implemented coordinate transform \texttt{cartesian\_tensors\_to\_cylindrical} uses the following formula
+\begin{align}
+T'_{rr} &=   \cos^2 \phi T_{xx}  + 2 \sin \phi \cos \phi  T_{xy} +  \sin^2 \phi T_{yy} \\
+T'_{r \phi} &=  -  \sin \phi \cos \phi T_{xx} + (\cos^2 \phi - \sin^2 \phi) T_{xy} + \sin \phi \cos \phi T_{yy} \\
+T'_{\phi \phi} &= \sin^2 \phi T_{xx} - 2 \sin \phi \cos \phi  T_{xy} + \cos^2 \phi T_{yy} \\
+T'_{r z} &= \cos \phi T_{xz} + \sin \phi T_{yz} \\
+T'_{\phi z} &= - \sin \phi T_{xz} + \cos \phi T_{yz} \\
+T'_{z z} &= T_{zz}. 
+\end{align}
+Strictly speaking $\phi$ is actually handled here as $r \phi$ in order to keep the physical unit of the coordinates and thus the dimensions of the transformed tensor components consistent with the Cartesian representation.
+
+\subsection{Energy and angle shifts due to transverse deformation}
+Locally the shape of the reflection curve is given by the 1D TT-curve but its position on the energy or angle scale is shifted by the transverse deformations given in Section~\ref{sec:deformations}. When the energy is scanned the shifts are given by
+\begin{equation}
+\frac{\Delta \mathcal{E}}{\mathcal{E}} = 
+- u_{zz} \cos^2 \phi - 2 u_{xz} \sin \phi \cos \phi
+- u_{xx} \sin^2 \phi 
++\left[\left(u_{zz} - u_{xx} \right) \sin \phi \cos \phi + 2 u_{x z} \sin^2 \phi \right] \cot \theta_B
+\end{equation}
+where $\theta_B$ is the Bragg angle and $\phi$ is the asymmetry angle. Similarly in the rocking angle scan the shifts in angle are given by
+\begin{equation}
+\Delta \theta = - \left( u_{zz} \cos^2 \phi + 2 u_{xz} \sin \phi \cos \phi
++ u_{xx} \sin^2 \phi \right) \tan \theta_B + \left(u_{zz} - u_{xx} \right) \sin \phi \cos \phi + 2 u_{x z} \sin^2 \phi.
+\end{equation}
+
+\subsection{Johann error}
+The shifts in the angle due to Johann error are
+\begin{equation}
+\Delta \theta = \frac{x^2}{2 R_1^2} \cot \theta 
+- \frac{(R_1 -R_2)(R_1 \sin^2 \theta - R_2)}{2 R_1 R_2 \sin \theta \cos \theta}y^2
+\end{equation} 
+and in terms of energy
+\begin{equation}
+\Delta \mathcal{E} = -\frac{x^2}{2 R_1^2} \mathcal{E} \cot^2 \theta
++ \frac{(R_1 -R_2)(R_1 \sin^2 \theta - R_2)}{2 R_1 R_2 \sin^2 \theta} \mathcal{E}  y^2.
+\end{equation}
+Note that the expression for $\Delta \theta$ is derived expanding $\sin x$ to the first order and thus ceases to be valid near $\theta = \pi/2$ if $R_1 \neq R_2$.
+
+\subsection{Convolution}
+The convolution of the 1D TT-curve and the calculated shift (transverse deformation + Johann error) is performed by dividing the analyser surface into a square grid, evaluating the shifts on each grid point, interpolating the 1D-TT curves with the applied shifts on a new grid, and taking the mean value of all interpolated curves. A boolean function of position can be applied to simulate masking of the crystal surface. After the normalization of the curve amplitude (see the next subsection) another convolution is applied to include \emph{e.g.} the incident bandwidth.
+
+\subsection{Normalization}
+Suppose that the source of X-rays in the Rowland circle geometry is a monochromatic, isotropic point source. The reflectivity curves are normalized to photon flux of the source integrated over full solid angle of 4$\pi$. Since the distance of the analyser center from the source in the Rowland circle geometry is $R_1 \sin \theta$ and the solid angle $\Omega$ covered by the analyser with the non-masked projected surface area $A \sin \theta$ is approximately
+\begin{equation}
+\Omega = \frac{A \sin \theta}{4 \pi (R_1 \sin \theta )^2} 
+= \frac{A }{4 \pi  R_1^2 \sin \theta}
+\end{equation}
+which is valid as long as $R_1 \sin \theta$ is much larger than the linear dimensions of the analyser. The convoluted reflectivity curve (without the incident bandwidth) is normalized by multiplying it with $\Omega$.
+
+
+\bibliographystyle{unsrt}
+\bibliography{documentation}
+\end{document}

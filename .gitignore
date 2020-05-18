@@ -127,3 +127,14 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+#LaTeX auxiliary files
+docs/*.aux
+docs/*.synctex.gz
+docs/*.log
+docs/*.bbl
+docs/*.blg
+docs/*.out
+
+#Virtual enviroment
+tbcalc_env
