@@ -1,5 +1,7 @@
 # tbcalc
-Package to calculate X-ray diffraction curves toroidally bent crystal analysers (TBCAs).
+Package to calculate X-ray diffraction curves toroidally bent crystal analysers (TBCAs). For derivative work, please cite
+
+Ari-Pekka Honkanen and Simo Huotari, "General method to calculate the elastic deformation and X-ray diffraction properties of bent crystal wafers" (2020) Submitted to IUCrJ. https://arxiv.org/abs/2006.04952
 
 ## Installation 
 tbcalc can be installed with pip with the following command:
